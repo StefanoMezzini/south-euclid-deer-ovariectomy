@@ -1,0 +1,2 @@
+- We will somehow need to note gaps (animal leaves and returns)
+- moving window (window = 1 month)
