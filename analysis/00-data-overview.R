@@ -61,7 +61,7 @@ ggplot() +
   labs(x = NULL, y = 'Animal ID') +
   theme(legend.position = 'top')
 
-ggsave('figures/time-series-dotplot.png', width = 6, height = 4,
+ggsave('figures/time-series-dotplot.png', width = 10, height = 8,
        units = 'in', dpi = 600, bg = 'white')
 
 # check comments (nothing problematic)
@@ -91,7 +91,7 @@ d %>%
   ylab('Count') +
   theme(legend.position = 'inside', legend.position.inside = c(0.75, 0.09))
 
-ggsave('figures/sampling-interval-histograms.png', width = 6, height = 4,
+ggsave('figures/sampling-interval-histograms.png', width = 12, height = 8,
        units = 'in', dpi = 600, bg = 'white')
 
 # look at median sampling intervals and overall duration
