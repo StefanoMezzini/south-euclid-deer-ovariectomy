@@ -13,8 +13,6 @@ window_ctmm <- function(.tel, window, dt, projection, full_ud = NULL,
                         fig_path = NULL, rds_path = NULL, cores = 1,
                         akde_weights = FALSE, progress = TRUE) {
   
-  if(progress) cat('Assuming the telemetry error is calibrated.\n')
-  
   if(.Platform$OS.type == 'Windows' & cores > 1) {
     warning('cores > 1 only works on Unix machines.')
   }
@@ -56,8 +54,7 @@ window_ctmm <- function(.tel, window, dt, projection, full_ud = NULL,
             }
             tibble(
               # find initial guesses for models (assuming calibrated error)
-              guess = ctmm.guess(data = .d, interactive = FALSE,
-                                 CTMM = ctmm(error = TRUE)) %>%
+              guess = ctmm.guess(data = .d, interactive = FALSE) %>%
                 list(),
               # select best movement model based on subset of .tel
               model = ctmm.select(data = .d, CTMM = guess[[1]],
@@ -80,7 +77,56 @@ window_ctmm <- function(.tel, window, dt, projection, full_ud = NULL,
     mutate(t_center = (t_start + t_end) / 2,
            posixct = as.POSIXct(t_center, origin = '1970-01-01',
                                 tz = .tel@info$timezone),
-           date = as.Date(posixct))
+           date = as.Date(posixct),
+           group = if_else(grepl('C', animal), 'Control', 'Ovariectomy'),
+           tau_p_hours =
+             map_dbl(model,
+                     \(.m) {
+                       if(is.null(.m)) {
+                         return(NA_real_)
+                       } else {
+                         tab <- summary(.m, units = FALSE)$CI
+                         if(any(grepl('position', rownames(tab)))) {
+                           x <- tab['τ[position] (seconds)', 'est']
+                           x <- 'hours' %#% x
+                           return(x)
+                         } else {
+                           return(NA_real_)
+                         }
+                       }
+                     }),
+           tau_v_hours =
+             map_dbl(model,
+                     \(.m) {
+                       if(is.null(.m)) {
+                         return(NA_real_)
+                       } else {
+                         tab <- summary(.m, units = FALSE)$CI
+                         if(any(grepl('velocity', rownames(tab)))) {
+                           x <- tab['τ[velocity] (seconds)', 'est']
+                           x <- 'hours' %#% x
+                           return(x)
+                         } else {
+                           return(NA_real_)
+                         }
+                       }
+                     }),
+           diffusion_km2_day =
+             map_dbl(model,
+                     \(.m) {
+                       if(is.null(.m)) {
+                         return(NA_real_)
+                       } else {
+                         tab <- summary(.m, units = FALSE)$CI
+                         if(any(grepl('diffusion', rownames(tab)))) {
+                           x <- tab['diffusion (square meters/second)', 'est']
+                           x <- 'km^2/day' %#% x
+                           return(x)
+                         } else {
+                           return(NA_real_)
+                         }
+                       }
+                     }))
   
   # plot results ----
   # tracking data
@@ -118,7 +164,7 @@ window_ctmm <- function(.tel, window, dt, projection, full_ud = NULL,
                                '-window-', window / (1 %#% 'day'),
                                '-days-dt-', dt / (1 %#% 'day'),
                                '-days.png')) %>%
-      ggsave(plot = plt, units = 'in', width = 7, height = 3,
+      ggsave(plot = plt, units = 'in', width = 14, height = 6,
              dpi = 600, bg = 'white')
   } else {
     print(plt)
