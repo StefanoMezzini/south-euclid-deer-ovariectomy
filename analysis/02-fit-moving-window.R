@@ -5,6 +5,7 @@ library('tidyr')   # for data wrangling
 library('ggplot2') # for fancy plots
 library('cowplot') # for fancy multi-panel plots
 library('ctmm')    # for movement modeling
+library('sf')      # for working with spatial data
 source('functions/window_ctmm.R') # to calculate HRs and create figures
 source('analysis/figures/default-ggplot-theme.R')
 
@@ -35,7 +36,7 @@ d %>%
 tictoc::toc()
 END <- Sys.time(); END
 
-# check parameters for each model ----
+# check parameters for each model to get preliminary results ----
 models <- map_dfr(list.files('models/moving-windows',
                              pattern = '-window-7-days-dt-3-days.rds',
                              full.names = TRUE), readRDS)
@@ -61,7 +62,7 @@ plot_grid(
     labs(x = 'Directional persistence (hours)', y = 'Count') +
     scale_fill_manual(expression(bold(No~finite~hat(tau)[v])),
                       values = c('grey30', 'red3')) +
-    theme(legend.position = 'inside', legend.position.inside = c(0.8, 0.8)),
+    theme(legend.position = 'inside', legend.position.inside = c(0.8, 0.7)),
   models %>%
     mutate(diffusion_km2_day = if_else(is.na(diffusion_km2_day),
                                        -0.01, diffusion_km2_day)) %>%
@@ -71,14 +72,49 @@ plot_grid(
     labs(x = expression(bold(Diffusion~(km^2/day))), y = 'Count') +
     scale_fill_manual(expression(bold(No~finite~diffusion~estimate)),
                       values = c('grey30', 'red3')) +
-    theme(legend.position = 'inside', legend.position.inside = c(0.8, 0.8)),
+    theme(legend.position = 'inside', legend.position.inside = c(0.8, 0.7)),
   ncol = 1)
 
-ggplot(models, aes(posixct, hr_est_95)) +
-  facet_grid(. ~ group) +
-  geom_point(alpha = 0.3) +
-  geom_smooth(aes(group = animal), method = 'gam', formula = y ~ s(x, k = 5)) +
-  scale_x_datetime() +
-  ylim(c(0, 10))
+plot_grid(
+  ggplot(models, aes(posixct, hr_est_95)) +
+    facet_grid(. ~ group) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(aes(group = animal), color = 'black', method = 'gam',
+                formula = y ~ s(x, k = 5),
+                method.args = list(family = Gamma(link = 'log'))) +
+    labs(x = NULL, y = expression(bold('7-day'~range~size~(km^2)))),
+  ggplot(models, aes(posixct, tau_p_hours)) +
+    facet_grid(. ~ group) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(aes(group = animal), color = 'black', method = 'gam',
+                formula = y ~ s(x, k = 5),
+                method.args = list(family = Gamma(link = 'log'))) +
+    labs(x = NULL, y = 'Range crossin time (hours)'),
+  ggplot(models, aes(posixct, diffusion_km2_day)) +
+    facet_grid(. ~ group) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(aes(group = animal), color = 'black', method = 'gam',
+                formula = y ~ s(x, k = 5),
+                method.args = list(family = Gamma(link = 'log'))) +
+    labs(x = NULL, y = expression(bold(Diffusion~(km^2/day)))),
+  ncol = 1)
 
+models <- filter(models, ! map_lgl(akde, is.null))
 
+uds <- lapply(models$akde, SpatialPolygonsDataFrame.UD) %>%
+  do.call("rbind", .) %>%
+  st_as_sf() %>%
+  filter(grepl('est', name))
+
+uds <- mutate(st_geometry(uds) %>%
+                st_as_sf(),
+              large = as.numeric(st_area(uds)) > 10 %#% 'km^2',
+              group = if_else(grepl('C', uds$name), 'Control', 'Ovariectomy'))
+
+plot_grid(ggplot(uds) +
+            geom_sf(aes(color = group), fill = 'transparent', lwd = 1) +
+            khroma::scale_color_highcontrast(name = 'Group'),
+          ggplot(uds) +
+            geom_sf(aes(color = large), fill = 'transparent', lwd = 1) +
+            scale_color_manual(expression(bold(HR~'>'~10~km^2)),
+                               values = c('black', 'red2')))

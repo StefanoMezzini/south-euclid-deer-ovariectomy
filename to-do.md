@@ -1,2 +1,6 @@
-- We will somehow need to note gaps (animal leaves and returns)
-- moving window (window = 1 month)
+- model:
+  - HR
+  - range crossing time?
+  - diffusion rate
+  - speed?
+- note frequency of gaps for the two groups (animal leaves and returns)
