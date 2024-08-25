@@ -46,14 +46,14 @@ d_ref[which(! d_ref$animal_id %in% unique(d$animal_id)), ]
 # C_101 barely has any data
 ggplot() +
   geom_hline(aes(yintercept = animal_id), d_ref, color = 'grey') +
-  geom_point(aes(timestamp, animal_id, color = group), d,
+  geom_point(aes(as.Date(timestamp), animal_id, color = group), d,
              pch = 20, alpha = 0.1) +
   geom_point(aes(deploy_on_date, animal_id, shape = 'start'), d_ref,
              size = 5) +
   geom_point(aes(deploy_off_date, animal_id, shape = 'end'), d_ref,
              size = 5, na.rm = TRUE) +
-  geom_point(aes(as.POSIXct(animal_mortality_date), animal_id,
-                 shape = 'mortality'), d_ref, size = 7, na.rm = TRUE) +
+  geom_point(aes(animal_mortality_date, animal_id, shape = 'mortality'),
+             d_ref, size = 7, na.rm = TRUE) +
   scale_color_manual('Group', values = PAL) +
   scale_shape_manual('Event type', breaks = c('start', 'end', 'mortality'),
                      values = c('[', ']', '\U00d7')) +
@@ -63,6 +63,13 @@ ggplot() +
 
 ggsave('figures/time-series-dotplot.png', width = 10, height = 8,
        units = 'in', dpi = 600, bg = 'white')
+
+ggplot() +
+  facet_wrap(~ animal_id) +
+  geom_histogram(aes(timestamp, fill = group), d) +
+  scale_fill_manual('Group', values = PAL) +
+  # labs(x = NULL, y = 'Animal ID') +
+  theme(legend.position = 'top')
 
 # check comments (nothing problematic)
 table(d_ref$animal_comments)
