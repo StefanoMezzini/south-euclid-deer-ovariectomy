@@ -4,4 +4,5 @@ theme_set(theme_bw() +
             theme(panel.grid = element_blank(),
                   text = element_text(face = 'bold')))
 
-PAL <- c(control = '#CC3311', ovariectomy = '#009988')
+# PAL <- c(control = '#CC3311', ovariectomy = '#009988')
+PAL <- c(control = '#74A6DA', ovariectomy = '#EF6756')
