@@ -11,28 +11,45 @@ source('analysis/figures/default-ggplot-theme.R')
 
 d <- readRDS('data/cleaned-telemetry-data.rds')
 
+# save movement models and UDs for full datasets ----
+# necessary to estimate excursivity
+plan(multisession, workers = 10)
+m <- d %>%
+  ungroup() %>%
+  mutate(
+    tel = future_map(tel, \(.t) as.telemetry(.t, mark.rm = TRUE)),
+    vg = future_map(tel, \(.t) ctmm.guess(.t, interactive = FALSE),
+                    .options = furrr_options(seed = TRUE),
+                    .progress = TRUE),
+    mm = future_map2(tel, vg, \(.t, .v) ctmm.select(.t, .v),
+                     .options = furrr_options(seed = TRUE),
+                     .progress = TRUE),
+    ud = future_map2(tel, mm, \(.t, .m) akde(.t, .m, weights = TRUE),
+                     .options = furrr_options(seed = TRUE),
+                     .progress = TRUE))
+saveRDS(m, 'models/full-telemetry-movement-models.rds')
+
+# fit moving window models and UDs ----
 if(! dir.exists('figures/moving-windows')) dir.create('figures/moving-windows')
 if(! dir.exists('models/moving-windows')) dir.create('models/moving-windows')
 
 # fitting moving window models using multiple parallel sessions
-plan(multisession(workers = 10))
 START <- Sys.time(); START
 tictoc::tic()
 d %>%
   unnest(tel) %>%
-  as.telemetry(keep = TRUE, mark.rm = TRUE) %>%
-  future_map(function(.d) {
-    # cat('Running', .d@info$identity, '\n')
+  as.telemetry(mark.rm = TRUE) %>%
+  map(function(.d) {
     window_ctmm(
       .d,
-      window = 7 %#% 'day', # each window is 30 days in size
-      dt = 3 %#% 'day', # shift window by 10 days each time
+      window = 7 %#% 'day', # each window is 7 days in size
+      dt = 3 %#% 'day', # shift window by 3 days each time
       fig_path = 'figures/moving-windows',
       rds_path = 'models/moving-windows',
       cores = 1, # cannot parallelize on Windows
       akde_weights = TRUE, # weigh points by interval between locations
       progress = 0) # level of progress tracking
-  }, .options = furrr_options(seed = FALSE), .progress = TRUE)
+  }, .progress = TRUE)
 tictoc::toc()
 END <- Sys.time(); END
 
@@ -113,8 +130,9 @@ uds <- mutate(st_geometry(uds) %>%
 
 plot_grid(ggplot(uds) +
             geom_sf(aes(color = group), fill = 'transparent', lwd = 1) +
-            khroma::scale_color_highcontrast(name = 'Group'),
+            scale_color_manual('Group', values = PAL),
           ggplot(uds) +
             geom_sf(aes(color = large), fill = 'transparent', lwd = 1) +
             scale_color_manual(expression(bold(HR~'>'~10~km^2)),
                                values = c('black', 'red2')))
+Sys.time()
