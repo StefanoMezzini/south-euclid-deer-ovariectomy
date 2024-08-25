@@ -78,14 +78,15 @@ DROP <- c(DROP, ID)
 # ok
 ID <- 'C_102'
 out <- check_animal(ID)
-plot_adj(ID, max_speed = 1, n_adj = 5) # ok
+plot_adj(ID, max_speed = 0.5, n_adj = 10) # ok
 
 # C_106 ----
 # check
 ID <- 'C_106'
 out <- check_animal(ID)
 plot_adj(ID, max_speed = 1.2, n_adj = 10) # ok given the uncertainty
-which(out$speed > 1); nrow(out) # not beginning or end of the telemetry
+which(out$speed > 1)
+nrow(out) # not beginning or end of the telemetry
 CHECK <- c(CHECK, ID)
 
 # C_107 ----
@@ -160,6 +161,20 @@ plot_adj(ID, max_speed = 0.5, max_angle = 160) # ok
 # T_158 ----
 # ok, some excursions
 ID <- 'T_158'
+out <- check_animal(ID) # outlier behavior at the end
+i <- which(d$tel[[which(d$animal == ID)]]$lat > 41.545)
+d %>%
+  filter(animal == ID) %>%
+  pull(tel) %>%
+  first() %>%
+  ggplot(aes(long, lat)) +
+  geom_path(aes(color = lubridate::decimal_date(timestamp))) +
+  geom_point(aes(color = lubridate::decimal_date(timestamp))) +
+  geom_point(data = d$tel[[which(d$animal == ID)]][i, ], color = 'red',
+             size = 3) +
+  scale_shape_manual(values = c(NA, 19)) +
+  khroma::scale_color_smoothrainbow(name = 'Date', reverse = TRUE)
+d$tel[[which(d$animal == ID)]]$outlier[i] <- 1
 out <- check_animal(ID) # ok
 
 # T_159 ----
@@ -215,3 +230,18 @@ d %>%
 
 # check which deer need to be checked
 CHECK
+
+# check range of dates
+layout(1:2)
+d %>%
+  unnest(tel) %>%
+  pull(timestamp) %>%
+  hist(breaks = 'months')
+hist(read_csv('data/Odocoileus virginianus DeNicola South Euclid.csv',
+         show_col_types = FALSE)$timestamp, breaks = 'months')
+layout(1)
+
+# count number of rows dropped
+nrow(read_csv('data/Odocoileus virginianus DeNicola South Euclid.csv',
+              show_col_types = FALSE)) -
+  nrow(filter(unnest(d, tel), ! outlier))
