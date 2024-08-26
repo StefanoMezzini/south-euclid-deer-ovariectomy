@@ -11,9 +11,12 @@ source('analysis/figures/default-ggplot-theme.R')
 
 d <- readRDS('data/cleaned-telemetry-data.rds')
 
+# set up computational plan for increased efficiency
+NCORES <- availableCores(logical = FALSE) - 2
+plan(multisession, workers = NCORES)
+
 # save movement models and UDs for full datasets ----
 # necessary to estimate excursivity
-plan(multisession, workers = 10)
 m <- d %>%
   ungroup() %>%
   mutate(
@@ -39,7 +42,7 @@ tictoc::tic()
 d %>%
   unnest(tel) %>%
   as.telemetry(mark.rm = TRUE) %>%
-  map(function(.d) {
+  future_map(function(.d) {
     window_ctmm(
       .d,
       window = 7 %#% 'day', # each window is 7 days in size
@@ -49,14 +52,15 @@ d %>%
       cores = 1, # cannot parallelize on Windows
       akde_weights = TRUE, # weigh points by interval between locations
       progress = 0) # level of progress tracking
-  }, .progress = TRUE)
+  }, .progress = TRUE, .options = furrr_options(seed = TRUE))
 tictoc::toc()
 END <- Sys.time(); END
 
 # check parameters for each model to get preliminary results ----
 models <- map_dfr(list.files('models/moving-windows',
                              pattern = '-window-7-days-dt-3-days.rds',
-                             full.names = TRUE), readRDS)
+                             full.names = TRUE), readRDS) %>%
+  mutate(group = tolower(group))
 
 models %>%
   group_by(group) %>%
@@ -126,11 +130,13 @@ uds <- lapply(models$akde, SpatialPolygonsDataFrame.UD) %>%
 uds <- mutate(st_geometry(uds) %>%
                 st_as_sf(),
               large = as.numeric(st_area(uds)) > 10 %#% 'km^2',
-              group = if_else(grepl('C', uds$name), 'Control', 'Ovariectomy'))
+              group = if_else(grepl('C', uds$name), 'control', 'ovariectomy'))
 
 plot_grid(ggplot(uds) +
+            facet_wrap(~ group) +
             geom_sf(aes(color = group), fill = 'transparent', lwd = 1) +
-            scale_color_manual('Group', values = PAL),
+            scale_color_manual('Group', values = paste0(PAL, '10')) +
+            theme(legend.position = 'none'),
           ggplot(uds) +
             geom_sf(aes(color = large), fill = 'transparent', lwd = 1) +
             scale_color_manual(expression(bold(HR~'>'~10~km^2)),
