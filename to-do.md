@@ -1,4 +1,2 @@
-- model HR, diffusion, and excursivity:
-  - with T_169
-  - without T_169
+- make HGAM figures for publication
 - note frequency of gaps for the two groups (animal leaves and returns)?
