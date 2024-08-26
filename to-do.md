@@ -1,6 +1,4 @@
-- model:
-  - HR
-  - range crossing time?
-  - diffusion rate
-  - speed?
-- note frequency of gaps for the two groups (animal leaves and returns)
+- model HR, diffusion, and excursivity:
+  - with T_169
+  - without T_169
+- note frequency of gaps for the two groups (animal leaves and returns)?
