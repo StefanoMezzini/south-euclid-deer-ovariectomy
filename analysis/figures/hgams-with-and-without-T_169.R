@@ -1,6 +1,6 @@
 library('dplyr')   # for data wrangling
 library('tidyr')   # for data wrangling
-library('purrr')   # for funtional programming
+library('purrr')   # for functional programming
 library('ggplot2') # for fancy plots
 library('cowplot') # for fancy multi-panel plots
 library('mgcv')    # for GAMs
