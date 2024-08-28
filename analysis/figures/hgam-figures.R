@@ -91,7 +91,7 @@ p_hr <-
   facet_grid(. ~ group) +
   geom_point(aes(doy, hr_est_95), mw, alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -135,7 +135,7 @@ p_hr <-
   ggplot(preds) +
   facet_grid(. ~ group) +
   geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
