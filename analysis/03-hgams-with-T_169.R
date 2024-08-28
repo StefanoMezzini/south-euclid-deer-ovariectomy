@@ -87,7 +87,8 @@ m_hr <- bam(
   family = Gamma('log'),
   data = mw,
   method = 'fREML',
-  discrete = TRUE)
+  discrete = TRUE,
+  knots = list(doy = c(0.5, 365.5)))
 
 appraise(m_hr, point_alpha = 0.1)
 draw(m_hr, nrow = 3, parametric = TRUE, residuals = TRUE)
@@ -102,13 +103,14 @@ m_diff <- bam(
   family = Gamma('log'),
   data = mw,
   method = 'fREML',
-  discrete = TRUE)
+  discrete = TRUE,
+  knots = list(doy = c(0.5, 365.5)))
 
 appraise(m_diff, point_alpha = 0.1)
 draw(m_diff, nrow = 3, parametric = TRUE, residuals = TRUE)
 saveRDS(m_diff, file = 'models/m-diff-with-T_169.rds')
 
-# excursivity ----
+# excursivity (fits in ~ 160 seconds) ----
 m_exc <- bam(
   excursivity ~
     group + #' `by` requires an explicit intercept for each group
@@ -118,6 +120,7 @@ m_exc <- bam(
   data = d,
   method = 'fREML',
   discrete = TRUE,
+  knots = list(doy = c(0.5, 365.5)),
   control = gam.control(trace = TRUE))
 
 appraise(m_exc, type = 'pearson', point_alpha = 0.1)
