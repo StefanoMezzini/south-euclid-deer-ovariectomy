@@ -14,7 +14,7 @@ d <- read_csv('data/Odocoileus virginianus DeNicola South Euclid.csv',
          hdop = `gps:hdop`,
          fix_type = `sensolus:fix_type`) %>%
   mutate(group = if_else(grepl('T_', animal_id),
-                         'ovariectomy', 'control'))
+                         'Ovariectomy', 'Control'))
 
 glimpse(d)
 
@@ -68,7 +68,7 @@ ggplot() +
   facet_wrap(~ animal_id) +
   geom_histogram(aes(timestamp, fill = group), d) +
   scale_fill_manual('Group', values = PAL) +
-  # labs(x = NULL, y = 'Animal ID') +
+  labs(x = NULL, y = 'Number of locations') +
   theme(legend.position = 'top')
 
 # check comments (nothing problematic)
