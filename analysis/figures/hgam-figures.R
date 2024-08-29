@@ -56,7 +56,7 @@ get_preds <- function(parameter) {
   pr <- predict(m, newdata = newd, type = 'link', se.fit = TRUE,
                 exclude = c('s(doy,animal_year):groupControl',
                             's(doy,animal_year):groupOvariectomy'),
-                discrete = FALSE) %>%
+                discrete = FALSE, unconditional = TRUE) %>%
     as.data.frame() %>%
     transmute(mu = inv_link(m)(fit),
               lwr = inv_link(m)(fit - se.fit * 1.96),
@@ -74,7 +74,7 @@ preds <- bind_cols(newd,
 
 # make figures ----
 doy_breaks <- c(1, 91, 182, 274)
-doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%B %d')
+doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%B 1')
 
 #' `coplot::get_legend()` fails (v. 1.1.3.9000)
 get_legend <- function(.plot) {
@@ -92,7 +92,7 @@ p_hr <-
   geom_point(aes(doy, hr_est_95), mw, alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
               alpha = 0.3) +
-  geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
+  geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('7-day home-range size (km\U00B2)') +
@@ -105,7 +105,7 @@ p_diff <-
   geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
               alpha = 0.3) +
-  geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
+  geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('Daily diffusion rate (km\U00B2/day)') +
@@ -118,7 +118,7 @@ p_exc <-
   geom_point(aes(doy, excursivity), d, alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
               alpha = 0.3) +
-  geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
+  geom_line(aes(doy, exc_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   scale_y_continuous('Daily excursivity', limits = c(0, 1), expand = c(0, 0)) +
@@ -127,16 +127,15 @@ p_exc <-
 
 plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
 
-ggsave('figures/hgam-figure-with-data.png', width = 8, height = 10, units = 'in',
-       dpi = 600, bg = 'white')
+ggsave('figures/hgam-figure-with-data.png', width = 16, height = 10,
+       units = 'in', dpi = 600, bg = 'white')
 
 # without data points
 p_hr <-
   ggplot(preds) +
-  facet_grid(. ~ group) +
   geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
               alpha = 0.3) +
-  geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
+  geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('7-day home-range size (km\U00B2)') +
@@ -145,10 +144,9 @@ p_hr <-
 
 p_diff <-
   ggplot(preds) +
-  facet_grid(. ~ group) +
   geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
               alpha = 0.3) +
-  geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
+  geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('Daily diffusion rate (km\U00B2/day)') +
@@ -157,13 +155,12 @@ p_diff <-
 
 p_exc <-
   ggplot(preds) +
-  facet_grid(. ~ group) +
   geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
               alpha = 0.3) +
-  geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
+  geom_line(aes(doy, exc_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
-  scale_y_continuous('Daily excursivity', limits = c(0, 1), expand = c(0, 0)) +
+  scale_y_continuous('Daily excursivity') +
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'none')
 
