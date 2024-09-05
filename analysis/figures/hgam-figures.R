@@ -8,7 +8,7 @@ library('mgcv')    # for GAMs
 library('gratia')  # for ggplot-based model plots
 source('analysis/figures/default-ggplot-theme.R')
 
-# import data ----
+# import moving window data ----
 mw <- map_dfr(list.files('models/moving-windows',
                          pattern = '-window-7-days-dt-3-days.rds',
                          full.names = TRUE), readRDS) %>%
@@ -40,10 +40,32 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   ungroup() %>%
   mutate(animal_year = factor(paste(animal, lubridate::year(date))))
 
+# import number of daily fixes
+fixes <- readRDS('data/cleaned-telemetry-data.rds') %>%
+  select(! tag_local_identifier) %>%
+  unnest(tel) %>%
+  filter(outlier == 0) %>%
+  select(group, animal, timestamp) %>%
+  mutate(date = as.Date(timestamp)) %>%
+  group_by(group, animal, date) %>%
+  summarize(daily_fixes = n(), .groups = 'drop') %>%
+  nest(tel = ! c(group, animal)) %>%
+  mutate(tel = map(tel, \(.t) {
+    full_t <- tibble(date = seq(min(.t$date), max(.t$date), by = 1))
+    
+    left_join(full_t, .t, by = 'date') %>%
+      mutate(daily_fixes = if_else(is.na(daily_fixes), 0, daily_fixes))
+  })) %>%
+  unnest(tel) %>%
+  mutate(group = factor(group),
+         doy = lubridate::yday(date),
+         animal_year = factor(paste(animal, lubridate::year(date))))
+
 # import models ----
 m_hr <- readRDS('models/m-hr-without-T_169.rds')
 m_diff <- readRDS('models/m-diff-without-T_169.rds')
 m_exc <- readRDS('models/m-exc-without-T_169.rds')
+m_fix <- readRDS('models/daily-fixes-hgam.rds')
 
 # make predictions ----
 newd <- expand_grid(group = unique(m_hr$model$group),
@@ -55,8 +77,10 @@ get_preds <- function(parameter) {
   
   pr <- predict(m, newdata = newd, type = 'link', se.fit = TRUE,
                 exclude = c('s(doy,animal_year):groupControl',
-                            's(doy,animal_year):groupOvariectomy'),
-                discrete = FALSE, unconditional = TRUE) %>%
+                            's(doy,animal_year):groupOvariectomy',
+                            's(doy,animal_year)'),
+                # Smoothness uncertainty corrected covariance not available
+                discrete = FALSE, unconditional = FALSE) %>%
     as.data.frame() %>%
     transmute(mu = inv_link(m)(fit),
               lwr = inv_link(m)(fit - se.fit * 1.96),
@@ -70,7 +94,8 @@ get_preds <- function(parameter) {
 preds <- bind_cols(newd,
                    get_preds(parameter = 'hr'),
                    get_preds(parameter = 'diff'),
-                   get_preds(parameter = 'exc'))
+                   get_preds(parameter = 'exc'),
+                   get_preds(parameter = 'fix'))
 
 # make figures ----
 doy_breaks <- c(1, 91, 182, 274)
@@ -85,7 +110,8 @@ get_legend <- function(.plot) {
 theme_set(theme_get() +
             theme(plot.margin = unit(c(5.5, 20, 5.5, 5.5), units = 'pt')))
 
-# with data points
+# with data points ----
+# movement behavior parameters
 p_hr <-
   ggplot(preds) +
   facet_grid(. ~ group) +
@@ -130,7 +156,24 @@ plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
 ggsave('figures/hgam-figure-with-data.png', width = 16, height = 10,
        units = 'in', dpi = 600, bg = 'white')
 
-# without data points
+# daily fixes
+p_fix <-
+  ggplot(preds) +
+  facet_grid(. ~ group) +
+  geom_point(aes(doy, daily_fixes), fixes, alpha = 0.3) +
+  geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
+              alpha = 0.3) +
+  geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
+  scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
+                     expand = c(0, 0)) +
+  ylab('Number of daily fixes') +
+  scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
+  theme(legend.position = 'none')
+
+ggsave('figures/daily-fixes-figure-with-data.png', p_fix,
+       width = 16, height = 6, units = 'in', dpi = 600, bg = 'white')
+
+# without data points ----
 p_hr <-
   ggplot(preds) +
   geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
@@ -168,3 +211,19 @@ plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
 
 ggsave('figures/hgam-figure.png', width = 8, height = 10, units = 'in',
        dpi = 600, bg = 'white')
+
+# daily fixes
+p_fix <-
+  ggplot(preds) +
+  facet_grid(. ~ group) +
+  geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
+              alpha = 0.3) +
+  geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
+  scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
+                     expand = c(0, 0)) +
+  ylab('Number of daily fixes') +
+  scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
+  theme(legend.position = 'none')
+
+ggsave('figures/daily-fixes-figure.png', p_fix,
+       width = 16, height = 6, units = 'in', dpi = 600, bg = 'white')
