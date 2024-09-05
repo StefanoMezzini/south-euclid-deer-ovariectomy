@@ -24,6 +24,29 @@ unique(d$geolocator_fix_type)
 unique(d$group)
 head(unique(d$comments)) # nearest addresses
 
+# collars were set to sample every ~30 minutes
+d <- d %>%
+  group_by(animal_id) %>%
+  mutate(dt = c(NA, diff(timestamp))) %>%
+  ungroup()
+
+median(d$dt, na.rm = TRUE)
+
+hist(d$dt, breaks = seq(0, 3e6, by = 30), xlim = c(0, 400))
+
+d %>%
+  group_by(animal_id) %>%
+  summarize(min_dt = min(dt, na.rm = TRUE),
+            mean_dt = mean(dt, na.rm = TRUE),
+            median_dt = median(dt, na.rm = TRUE)) %>%
+  arrange(median_dt)
+
+d %>%
+  group_by(animal_id) %>%
+  summarize(min_dt = min(diff(timestamp)),
+            mean_dt = mean(diff(timestamp)),
+            median_dt = median(diff(timestamp)))
+
 # reference data
 d_ref <- read_csv('data/Odocoileus virginianus DeNicola South Euclid-reference-data.csv',
                   show_col_types = FALSE, col_types = c(`animal-sex` = 'c')) %>%
