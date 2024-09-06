@@ -62,23 +62,24 @@ fixes <- readRDS('data/cleaned-telemetry-data.rds') %>%
          animal_year = factor(paste(animal, lubridate::year(date))))
 
 # import models ----
-m_hr <- readRDS('models/m-hr-without-T_169.rds')
-m_diff <- readRDS('models/m-diff-without-T_169.rds')
-m_exc <- readRDS('models/m-exc-without-T_169.rds')
+m_hr <- readRDS('models/m-hr-with-T_169.rds')
+m_diff <- readRDS('models/m-diff-with-T_169.rds')
+m_exc <- readRDS('models/m-exc-with-T_169.rds')
 m_fix <- readRDS('models/daily-fixes-hgam.rds')
 
 # make predictions ----
 newd <- expand_grid(group = unique(m_hr$model$group),
                     doy = seq(1, 365, length.out = 400),
+                    doy_cr = 0,
                     animal_year = 'new animal')
 
 get_preds <- function(parameter) {
   m <- get(paste0('m_', parameter))
   
   pr <- predict(m, newdata = newd, type = 'link', se.fit = TRUE,
-                exclude = c('s(doy,animal_year):groupControl',
-                            's(doy,animal_year):groupOvariectomy',
-                            's(doy,animal_year)'),
+                exclude = c('s(doy_cr,animal_year):groupControl',
+                            's(doy_cr,animal_year):groupOvariectomy',
+                            's(doy_cr,animal_year)'),
                 # Smoothness uncertainty corrected covariance not available
                 discrete = FALSE, unconditional = FALSE) %>%
     as.data.frame() %>%
@@ -112,23 +113,31 @@ theme_set(theme_get() +
 
 # with data points ----
 # movement behavior parameters
+filter(mw, hr_est_95 > 10) %>%
+  select(group, animal, hr_est_95, date)
+
 p_hr <-
   ggplot(preds) +
   facet_grid(. ~ group) +
-  geom_point(aes(doy, hr_est_95), mw, alpha = 0.3) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_point(aes(doy, hr_est_95), mw, alpha = 0.3, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
               alpha = 0.3) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('7-day home-range size (km\U00B2)') +
+  ylim(c(0, 7.5)) +
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'none')
 
 p_diff <-
   ggplot(preds) +
   facet_grid(. ~ group) +
-  geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.3) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.3, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
               alpha = 0.3) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
@@ -141,6 +150,8 @@ p_diff <-
 p_exc <-
   ggplot(preds) +
   facet_grid(. ~ group) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, excursivity), d, alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
               alpha = 0.3) +
@@ -153,20 +164,22 @@ p_exc <-
 
 plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
 
-ggsave('figures/hgam-figure-with-data.png', width = 16, height = 10,
+ggsave('figures/hgam-figure-with-data.png', width = 12, height = 12,
        units = 'in', dpi = 600, bg = 'white')
 
 # daily fixes
 p_fix <-
   ggplot(preds) +
   facet_grid(. ~ group) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, daily_fixes), fixes, alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
               alpha = 0.3) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
-  ylab('Number of daily fixes') +
+  ylab('Number of fixes in a day') +
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'none')
 
@@ -209,7 +222,7 @@ p_exc <-
 
 plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
 
-ggsave('figures/hgam-figure.png', width = 8, height = 10, units = 'in',
+ggsave('figures/hgam-figure.png', width = 12, height = 12, units = 'in',
        dpi = 600, bg = 'white')
 
 # daily fixes

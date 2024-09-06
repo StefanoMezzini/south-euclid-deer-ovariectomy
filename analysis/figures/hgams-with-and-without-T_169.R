@@ -24,6 +24,7 @@ intercepts <-
     
     tibble(group = c('Control', 'Ovariectomy'),
            doy = 0,
+           doy_cr = 0,
            animal_year = 'new') %>%
       bind_cols(.,
                 predict.bam(.m, newdata = ., type = 'link', se.fit = TRUE,
@@ -45,6 +46,8 @@ intercepts <-
                            'Diffusion (km\U00B2/day)',
                            'Excursivity')))
 
+unique(last_dplyr_warnings())
+
 p_intercepts <-
   ggplot(intercepts) +
   facet_grid(parameter ~ with_T_169, scales = 'free_y', switch = 'y') +
@@ -64,7 +67,8 @@ partials <- models %>%
   unnest(part) %>%
   rename_with(\(x) gsub('\\.', '', x)) %>%
   rename(term = smooth) %>%
-  mutate(lwr = estimate - 1.96 * se,
+  mutate(doy = if_else(is.na(doy), doy_cr, doy),
+         lwr = estimate - 1.96 * se,
          mu = estimate,
          upr = estimate + 1.96 * se,
          term = if_else(type == 'Factor smooth',

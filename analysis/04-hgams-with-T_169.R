@@ -14,6 +14,7 @@ mw <- map_dfr(list.files('models/moving-windows',
                          full.names = TRUE), readRDS) %>%
   select(! c(hr_lwr_95, hr_upr_95)) %>%
   mutate(doy = lubridate::yday(date),
+         doy_cr = doy,
          group = factor(group),
          animal = factor(animal),
          speed_m_s = map_dbl(model, \(.m) {
@@ -48,8 +49,9 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
          group = stringr::str_to_sentence(group) %>%
            factor(),
          doy = lubridate::yday(timestamp),
+         doy_cr = doy,
          date = as.Date(timestamp)) %>%
-  group_by(group, animal, doy, date) %>%
+  group_by(group, animal, doy, doy_cr, date) %>%
   summarize(excursivity = mean(excursivity)) %>%
   ungroup() %>%
   mutate(animal_year = factor(paste(animal, lubridate::year(date))))
@@ -61,7 +63,7 @@ ggplot(d, aes(doy, excursivity, group = animal_year)) +
   geom_smooth(color = 'darkorange', method = 'gam', formula = y ~ s(x),
               method.args = list(family = betar()))
 
-#' 9 does tracked in both years (need to use `animal_year`)
+#' 9 of the does were tracked in both years (need to use `animal_year`)
 mw %>%
   group_by(animal) %>%
   summarize(n = n_distinct(animal_year)) %>%
@@ -83,7 +85,8 @@ m_hr <- bam(
   hr_est_95 ~
     group + #' `by` requires an explicit intercept for each group
     s(doy, by = group, k = 10, bs = 'cc') +
-    s(doy, by = group, animal_year, k = 10, bs = 'fs', xt = list(bs = 'cc')),
+    s(doy_cr, by = group, animal_year, k = 10, bs = 'fs',
+      xt = list(bs = 'cr')),
   family = Gamma('log'),
   data = mw,
   method = 'fREML',
@@ -99,7 +102,8 @@ m_diff <- bam(
   diffusion_km2_day ~
     group + #' `by` requires an explicit intercept for each group
     s(doy, by = group, k = 10, bs = 'cc') +
-    s(doy, by = group, animal_year, k = 10, bs = 'fs', xt = list(bs = 'cc')),
+    s(doy_cr, by = group, animal_year, k = 10, bs = 'fs',
+      xt = list(bs = 'cr')),
   family = Gamma('log'),
   data = mw,
   method = 'fREML',
@@ -115,7 +119,8 @@ m_exc <- bam(
   excursivity ~
     group + #' `by` requires an explicit intercept for each group
     s(doy, by = group, k = 10, bs = 'cc') +
-    s(doy, by = group, animal_year, k = 10, bs = 'fs', xt = list(bs = 'cc')),
+    s(doy_cr, by = group, animal_year, k = 10, bs = 'fs',
+      xt = list(bs = 'cr')),
   family = betar(link = 'logit'),
   data = d,
   method = 'fREML',

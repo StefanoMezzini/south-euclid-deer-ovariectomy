@@ -11,12 +11,14 @@ source('analysis/figures/default-ggplot-theme.R')
 d <- readRDS('data/cleaned-telemetry-data.rds') %>%
   select(! tag_local_identifier) %>%
   unnest(tel) %>%
-  filter(outlier == 0) %>%
+  filter(outlier == 0) %>% # remove outliers
   select(group, animal, timestamp) %>%
   mutate(date = as.Date(timestamp)) %>%
+  # calculate daily fixes per animal
   group_by(group, animal, date) %>%
   summarize(daily_fixes = n(), .groups = 'drop') %>%
   nest(tel = ! c(group, animal)) %>%
+  # add days with no fixes and convert daily_fixes to 0
   mutate(tel = map(tel, \(.t) {
     full_t <- tibble(date = seq(min(.t$date), max(.t$date), by = 1))
     
@@ -26,6 +28,7 @@ d <- readRDS('data/cleaned-telemetry-data.rds') %>%
   unnest(tel) %>%
   mutate(group = factor(group),
          doy = lubridate::yday(date),
+         doy_cr = doy,
          animal_year = factor(paste(animal, lubridate::year(date))))
 
 # number of fixes per day are somewhat consistent between groups, other
@@ -49,7 +52,7 @@ if(file.exists('models/daily-fixes-hgam.rds')) {
     daily_fixes ~
       group +
       s(doy, by = group, bs = 'cc', k = 5) +
-      s(doy, animal_year, bs = 'fs', xt = list(bs = 'cc'), k = 5),
+      s(doy_cr, animal_year, bs = 'fs', xt = list(bs = 'cr'), k = 5),
     family = tw(link = 'log'),
     data = d,
     method = 'fREML',
