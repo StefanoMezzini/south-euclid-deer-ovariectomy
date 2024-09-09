@@ -1,3 +1,4 @@
+library('readr')     # for importing csv data
 library('dplyr')     # for data wrangling
 library('tidyr')     # for data wrangling
 library('purrr')     # for functional programming
@@ -10,17 +11,24 @@ source('analysis/figures/default-ggplot-theme.R')
 # import data
 d <- readRDS('data/cleaned-telemetry-data.rds') %>%
   select(! tag_local_identifier) %>%
+  # add 
+  left_join(
+    read_csv('data/Odocoileus virginianus DeNicola South Euclid-reference-data.csv',
+             show_col_types = FALSE, col_types = c(`animal-sex` = 'c')) %>%
+      rename_with(\(.names) gsub('-', '_', .names)) %>%
+      select(animal_id, deploy_on_date),
+    by = join_by(animal == animal_id)) %>%
+  relocate(deploy_on_date, .after = group) %>%
   unnest(tel) %>%
-  filter(outlier == 0) %>% # remove outliers
-  select(group, animal, timestamp) %>%
+  select(group, animal, deploy_on_date, timestamp) %>%
   mutate(date = as.Date(timestamp)) %>%
   # calculate daily fixes per animal
-  group_by(group, animal, date) %>%
+  group_by(group, animal, deploy_on_date, date) %>%
   summarize(daily_fixes = n(), .groups = 'drop') %>%
-  nest(tel = ! c(group, animal)) %>%
+  nest(tel = ! c(group, animal, deploy_on_date)) %>%
   # add days with no fixes and convert daily_fixes to 0
-  mutate(tel = map(tel, \(.t) {
-    full_t <- tibble(date = seq(min(.t$date), max(.t$date), by = 1))
+  mutate(tel = map2(tel, deploy_on_date, \(.t, .start) {
+    full_t <- tibble(date = seq(.start, max(.t$date), by = 1))
     
     left_join(full_t, .t, by = 'date') %>%
       mutate(daily_fixes = if_else(is.na(daily_fixes), 0, daily_fixes))
@@ -68,7 +76,7 @@ summary(m)
 d %>%
   mutate(fitted = fitted(m)) %>%
   ggplot(aes(fitted, daily_fixes)) +
-  geom_abline(a = 0, b = 1) +
+  geom_abline(intercept = 0, slope = 1) +
   geom_point(aes(color = group), alpha = 0.3) +
   geom_smooth(color = 'black') +
   scale_color_manual('Group', values = PAL) +
