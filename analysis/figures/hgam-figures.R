@@ -98,6 +98,27 @@ preds <- bind_cols(newd,
                    get_preds(parameter = 'exc'),
                    get_preds(parameter = 'fix'))
 
+# get estimates and CIs for the intercept values ----
+get_cis <- function(m) {
+  b <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Estimate']
+  se <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Std. Error']
+  
+  cat('Estimate: ', round(exp(b), 2) * 100 - 100,
+      '%\n95% CI: (', round(exp(b - se * 1.96), 2) * 100 - 100,
+      '%, ', round(exp(b + se * 1.96), 2) * 100 - 100, '%)\n', sep = '')
+}
+
+# with T_169
+get_cis(m_fix)
+get_cis(m_hr)
+get_cis(m_diff)
+get_cis(m_exc)
+
+# without T_169
+get_cis(readRDS('models/m-hr-without-T_169.rds'))
+get_cis(readRDS('models/m-diff-without-T_169.rds'))
+get_cis(readRDS('models/m-exc-without-T_169.rds'))
+
 # make figures ----
 doy_breaks <- c(1, 91, 182, 274)
 doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%B 1')
@@ -189,6 +210,8 @@ ggsave('figures/daily-fixes-figure-with-data.png', p_fix,
 # without data points ----
 p_hr <-
   ggplot(preds) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
               alpha = 0.3) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
@@ -200,6 +223,8 @@ p_hr <-
 
 p_diff <-
   ggplot(preds) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
               alpha = 0.3) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
@@ -211,6 +236,8 @@ p_diff <-
 
 p_exc <-
   ggplot(preds) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
               alpha = 0.3) +
   geom_line(aes(doy, exc_mu, color = group), linewidth = 1.5) +
@@ -229,6 +256,8 @@ ggsave('figures/hgam-figure.png', width = 12, height = 12, units = 'in',
 p_fix <-
   ggplot(preds) +
   facet_grid(. ~ group) +
+  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
               alpha = 0.3) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
