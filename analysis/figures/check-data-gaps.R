@@ -39,6 +39,63 @@ ggplot(d, aes(long, lat, color = lubridate::decimal_date(timestamp))) +
 ggsave('figures/telemetries.png', width = 16, height = 16, dpi = 300,
        bg = 'white')
 
+# T_169 moves to the secondary location 7 separate times ----
+d %>%
+  filter(animal == 'T_169') %>%
+  filter(lat < 41.5) %>%
+  pull(timestamp) %>%
+  as.Date() %>%
+  hist(breaks = 'days')
+
+d %>%
+  filter(animal == 'T_169') %>%
+  filter(lat < 41.5) %>%
+  pull(timestamp) %>%
+  quantile(probs = seq(0, 1, by = 0.05)) %>%
+  as.Date()
+
+dates <- as.Date(c('2023-02-01', '2023-02-08', '2023-04-08', '2023-04-15',
+                   '2023-04-30', '2023-05-11', '2023-05-18', '2023-05-30'))
+abline(v = dates, col = 'red3')
+
+d %>%
+  filter(animal == 'T_169') %>%
+  mutate(excursion = lat < 41.5,
+         trip = case_when(timestamp < dates[1] ~ 1,
+                          timestamp < dates[2] ~ 2,
+                          timestamp < dates[3] ~ 3,
+                          timestamp < dates[4] ~ 4,
+                          timestamp < dates[5] ~ 5,
+                          timestamp < dates[6] ~ 6,
+                          timestamp < dates[7] ~ 7,
+                          timestamp < dates[8] ~ 8)) %>%
+  group_by(trip) %>%
+  mutate(n = sum(excursion),
+         days = diff(range(timestamp[which(excursion)])) / 60^2 / 24,
+         days = round(days),
+         start = as.Date(min(timestamp[which(excursion)])) %>%
+           format(format = '%B %d'),
+         end = as.Date(max(timestamp[which(excursion)])) %>%
+           format(format = '%B %d')) %>%
+  ungroup() %>%
+  mutate(lab = paste0('Trip ', trip, ' (', n, ' fixes in ', days,
+                      if_else(days == 1, ' day)', ' days)'),
+                      ':\nfrom ', start, ' to ', end) %>%
+           gsub(' 0', ' ', .)) %>%
+  ggplot(aes(long, lat)) +
+  coord_equal() +
+  facet_wrap(~ lab, nrow = 2) +
+  geom_path() +
+  geom_path(aes(color = excursion)) +
+  geom_point(aes(color = excursion), alpha = 0.3) +
+  labs(x = 'Longitude', y = 'Latitude') +
+  scale_x_continuous(breaks = seq(-81.54, -81.51, by = 0.01)) +
+  scale_color_manual('Excursion', values = c('black', 'red')) +
+  theme(legend.position = 'top')
+
+ggsave('figures/T_169-excursions.png', width = 10, height = 10, dpi = 600,
+       bg = 'white')
+
 # density plots of data gaps look similar between groups ----
 mw <- map_dfr(list.files('models/moving-windows',
                          pattern = '-window-7-days-dt-3-days.rds',
