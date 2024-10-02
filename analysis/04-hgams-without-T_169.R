@@ -36,6 +36,21 @@ mw <- map_dfr(list.files('models/moving-windows',
 
 unique(last_dplyr_warnings())[[1]]
 
+mw %>%
+  mutate(hr_est_95 = if_else(animal == 'T_169', NA_real_, hr_est_95),
+         diffusion_km2_day = if_else(animal == 'T_169', NA_real_,
+                                     diffusion_km2_day)) %>%
+  group_by(group) %>%
+  summarize(
+    hr = sum(! is.na(hr_est_95)),
+    diff = sum(! is.na(diffusion_km2_day)),
+    n = n(),
+    .groups = 'drop') %>%
+  bind_rows(.,
+            bind_cols(group = 'Total', t(colSums(select(., -1))))) %>%
+  mutate(hr = paste0(round(hr / n * 100, 1), '%'),
+         diff = paste0(round(diff / n * 100, 1), '%'))
+
 # daily excursivity data ----
 d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   mutate(tel = map2(tel, ud, \(.t, .u) {
@@ -56,6 +71,14 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   summarize(excursivity = mean(excursivity)) %>%
   ungroup() %>%
   mutate(animal_year = factor(paste(animal, lubridate::year(date))))
+
+d %>%
+  mutate(excursivity = if_else(animal == 'T_169', NA_real_, excursivity)) %>%
+  group_by(group) %>%
+  summarize(used = sum(! is.na(excursivity )), n = n(), .groups = 'drop') %>%
+  bind_rows(.,
+            bind_cols(group = 'Total', t(colSums(select(., -1))))) %>%
+  mutate(used = paste0(round(used / n * 100, 1), '%'))
 
 ggplot(d, aes(doy, excursivity, group = animal_year)) +
   facet_wrap(~ group, ncol = 1) +
@@ -79,7 +102,7 @@ mw %>%
 ggplot(mw, aes(posixct, speed_m_s, group = animal)) +
   facet_wrap(~ group, ncol = 1) +
   geom_line() +
-  geom_point()
+  geom_point(alpha = 0.3)
 
 # figure comparing parameters of T_169 to others ----
 plot_grid(
