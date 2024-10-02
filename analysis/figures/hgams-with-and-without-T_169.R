@@ -139,8 +139,8 @@ p_diag <- plot_grid(
   NULL, NULL,
   appraise(models$model[[5]], type = 'pearson', point_alpha = 0.1),
   appraise(models$model[[6]], type = 'pearson', point_alpha = 0.1),
-  ncol = 2, byrow = TRUE, rel_heights = c(10, 1, 10, 1, 10),
-  labels = c('A', 'B', '', '', 'C', 'D', '', '', 'E', 'F'))
+  nrow = 2, byrow = FALSE, rel_widths = c(10, 1, 10, 1, 10),
+  labels = c('A', '', 'B', '', 'C', 'D', '', 'E', '', 'F'))
 
-ggsave('figures/model-diagnostics.png', p_diag, width = 8, height = 12,
+ggsave('figures/model-diagnostics.png', p_diag, width = 12, height = 8,
        units = 'in', dpi = 600, bg = 'white', scale = 2)
