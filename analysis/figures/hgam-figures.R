@@ -15,7 +15,8 @@ mw <- map_dfr(list.files('models/moving-windows',
   filter(! grepl('T_169', animal)) %>%
   select(! c(hr_lwr_95, hr_upr_95)) %>%
   mutate(doy = lubridate::yday(date),
-         group = factor(group),
+         group = if_else(group == 'Ovariectomy', 'Treatment', group) %>%
+           factor(),
          animal_year = paste(animal, lubridate::year(date)) %>%
            factor())
 
@@ -31,7 +32,8 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   select(animal, group, tel) %>%
   unnest(tel) %>%
   mutate(animal = factor(animal),
-         group = stringr::str_to_sentence(group) %>%
+         group = if_else(group == 'ovariectomy', 'treatment', group) %>%
+           stringr::str_to_sentence() %>%
            factor(),
          doy = lubridate::yday(timestamp),
          date = as.Date(timestamp)) %>%
@@ -57,14 +59,15 @@ fixes <- readRDS('data/cleaned-telemetry-data.rds') %>%
       mutate(daily_fixes = if_else(is.na(daily_fixes), 0, daily_fixes))
   })) %>%
   unnest(tel) %>%
-  mutate(group = factor(group),
+  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group) %>%
+           factor(),
          doy = lubridate::yday(date),
          animal_year = factor(paste(animal, lubridate::year(date))))
 
 # import models ----
-m_hr <- readRDS('models/m-hr-with-T_169.rds')
-m_diff <- readRDS('models/m-diff-with-T_169.rds')
-m_exc <- readRDS('models/m-exc-with-T_169.rds')
+m_hr <- readRDS('models/m-hr-without-T_169.rds')
+m_diff <- readRDS('models/m-diff-without-T_169.rds')
+m_exc <- readRDS('models/m-exc-without-T_169.rds')
 m_fix <- readRDS('models/daily-fixes-hgam.rds')
 
 # make predictions ----
@@ -84,8 +87,10 @@ get_preds <- function(parameter) {
                 discrete = FALSE, unconditional = FALSE) %>%
     as.data.frame() %>%
     transmute(mu = inv_link(m)(fit),
-              lwr = inv_link(m)(fit - se.fit * 1.96),
-              upr = inv_link(m)(fit + se.fit * 1.96))
+              lwr_50 = inv_link(m)(fit - se.fit * 0.67),
+              upr_50 = inv_link(m)(fit + se.fit * 0.67),
+              lwr_95 = inv_link(m)(fit - se.fit * 1.96),
+              upr_95 = inv_link(m)(fit + se.fit * 1.96))
   
   colnames(pr) <- paste0(parameter, '_', colnames(pr))
   
@@ -96,28 +101,42 @@ preds <- bind_cols(newd,
                    get_preds(parameter = 'hr'),
                    get_preds(parameter = 'diff'),
                    get_preds(parameter = 'exc'),
-                   get_preds(parameter = 'fix'))
+                   get_preds(parameter = 'fix')) %>%
+  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
 
 # get estimates and CIs for the intercept values ----
+#' *using odds for beta*
 get_cis <- function(m) {
   b <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Estimate']
   se <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Std. Error']
+  p <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Pr(>|t|)']
   
-  cat('Estimate: ', round(exp(b), 2) * 100 - 100,
-      '%\n95% CI: (', round(exp(b - se * 1.96), 2) * 100 - 100,
-      '%, ', round(exp(b + se * 1.96), 2) * 100 - 100, '%)\n', sep = '')
+  l_inv <- m$family$linkinv
+  
+  # beta estiamates are centered at 0.5 = 50% by default
+  if(grepl('Beta', m$family$family))  {
+    cat('Estimate: ', round(l_inv(b), 2) * 100 - 100 + 50,
+        '%\n95% CI: (', round(l_inv(b - se * 1.96), 2) * 100 - 100 + 50,
+        '%, ', round(l_inv(b + se * 1.96), 2) * 100 - 100 + 50,
+        '%)\np-value: ', p, '\n', sep = '')
+  } else {
+    cat('Estimate: ', round(l_inv(b), 2) * 100 - 100,
+        '%\n95% CI: (', round(l_inv(b - se * 1.96), 2) * 100 - 100,
+        '%, ', round(l_inv(b + se * 1.96), 2) * 100 - 100,
+        '%)\np-value: ', p, '\n', sep = '')
+  }
 }
 
-# with T_169
+# without T_169
 get_cis(m_fix)
 get_cis(m_hr)
 get_cis(m_diff)
 get_cis(m_exc)
 
-# without T_169
-get_cis(readRDS('models/m-hr-without-T_169.rds'))
-get_cis(readRDS('models/m-diff-without-T_169.rds'))
-get_cis(readRDS('models/m-exc-without-T_169.rds'))
+# with T_169
+get_cis(readRDS('models/m-hr-with-T_169.rds'))
+get_cis(readRDS('models/m-diff-with-T_169.rds'))
+get_cis(readRDS('models/m-exc-with-T_169.rds'))
 
 # make figures ----
 doy_breaks <- c(1, 91, 182, 274)
@@ -143,14 +162,17 @@ p_hr <-
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, hr_est_95), mw, alpha = 0.3, na.rm = TRUE) +
-  geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
-              alpha = 0.3) +
+  geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('7-day home-range size (km\U00B2)') +
   ylim(c(0, 7.5)) +
-  scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
+  scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill'),
+                    labels = c('Control', 'Treatment')) +
   theme(legend.position = 'none')
 
 p_diff <-
@@ -159,8 +181,10 @@ p_diff <-
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.3, na.rm = TRUE) +
-  geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
-              alpha = 0.3) +
+  geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -173,9 +197,11 @@ p_exc <-
   facet_grid(. ~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_point(aes(doy, excursivity), d, alpha = 0.3) +
-  geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
-              alpha = 0.3) +
+  geom_point(aes(doy, excursivity), d, alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, exc_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -185,7 +211,7 @@ p_exc <-
 
 plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
 
-ggsave('figures/hgam-figure-with-data.png', width = 12, height = 12,
+ggsave('figures/hgam-figure-with-data.png', width = 16, height = 12,
        units = 'in', dpi = 600, bg = 'white')
 
 # daily fixes
@@ -194,9 +220,11 @@ p_fix <-
   facet_grid(. ~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_point(aes(doy, daily_fixes), fixes, alpha = 0.3) +
-  geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
-              alpha = 0.3) +
+  geom_point(aes(doy, daily_fixes), fixes, alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -210,10 +238,13 @@ ggsave('figures/daily-fixes-figure-with-data.png', p_fix,
 # without data points ----
 p_hr <-
   ggplot(preds) +
+  facet_wrap(~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
-              alpha = 0.3) +
+  geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -223,10 +254,13 @@ p_hr <-
 
 p_diff <-
   ggplot(preds) +
+  facet_wrap(~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
-              alpha = 0.3) +
+  geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -236,10 +270,13 @@ p_diff <-
 
 p_exc <-
   ggplot(preds) +
+  facet_wrap(~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
-              alpha = 0.3) +
+  geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, exc_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -247,19 +284,21 @@ p_exc <-
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'none')
 
-plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
+plot_grid(p_hr, p_diff, p_exc, labels = c('A', 'B', 'C'), ncol = 1)
 
-ggsave('figures/hgam-figure.png', width = 12, height = 12, units = 'in',
+ggsave('figures/hgam-figure.png', width = 16, height = 12, units = 'in',
        dpi = 600, bg = 'white')
 
 # daily fixes
 p_fix <-
   ggplot(preds) +
-  facet_grid(. ~ group) +
+  facet_wrap(~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
-              alpha = 0.3) +
+  geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
+              alpha = 0.2) +
+  geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
+              alpha = 0.2) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +

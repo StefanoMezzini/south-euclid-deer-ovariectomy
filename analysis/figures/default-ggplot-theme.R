@@ -5,4 +5,4 @@ theme_set(theme_bw() +
                   text = element_text(face = 'bold')))
 
 # PAL <- c(control = '#CC3311', ovariectomy = '#009988')
-PAL <- c(Control = '#74A6DA', Ovariectomy = '#EF6756')
+PAL <- c(Control = '#74A6DA', Treatment = '#EF6756')
