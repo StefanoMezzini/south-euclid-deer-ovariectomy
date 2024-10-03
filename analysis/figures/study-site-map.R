@@ -46,7 +46,7 @@ area <- bind_rows(stations, tels) %>%
 se <- area %>%
   st_bbox() %>%
   `names<-`(c('left', 'bottom', 'right', 'top')) %>%
-  get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 13)
+  get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
 
 ggmap(se) +
   geom_path(aes(X, Y, group = animal), bind_cols(tels, st_coordinates(tels)),
@@ -54,7 +54,7 @@ ggmap(se) +
   geom_sf(data = tels, inherit.aes = FALSE, alpha = 0.5, size = 0.2) +
   geom_sf(data = green_rd, inherit.aes = FALSE, color = 'darkorange',
           linewidth = 2) +
-  geom_sf(data = stations, inherit.aes = FALSE, size = 3) +
+  geom_sf(data = stations, inherit.aes = FALSE, size = 3.5) +
   geom_sf(data = stations, inherit.aes = FALSE, size = 1.75, color = 'white') +
   labs(x = 'Longitude', y = 'Latitude')
 
