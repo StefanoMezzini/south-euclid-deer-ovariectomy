@@ -161,7 +161,7 @@ p_hr <-
   facet_grid(. ~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_point(aes(doy, hr_est_95), mw, alpha = 0.3, na.rm = TRUE) +
+  geom_point(aes(doy, hr_est_95), mw, alpha = 0.2, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
@@ -180,7 +180,7 @@ p_diff <-
   facet_grid(. ~ group) +
   geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
-  geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.3, na.rm = TRUE) +
+  geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.2, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
