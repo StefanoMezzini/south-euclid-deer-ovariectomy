@@ -149,13 +149,14 @@ mw <- map_dfr(list.files('models/moving-windows',
                          full.names = TRUE), readRDS) %>%
   mutate(group = factor(if_else(group == 'Ovariectomy', 'Treatment', group)),
          animal = factor(animal)) %>%
-  select(group, animal, date)
+  select(group, animal, date, hr_est_95) %>%
+  filter(! is.na(hr_est_95))
 
 d_ref <- readr::read_csv('data/Odocoileus virginianus DeNicola South Euclid-reference-data.csv',
                   show_col_types = FALSE, col_types = c(`animal-sex` = 'c')) %>%
   rename_with(\(.names) gsub('-', '_', .names))
 
-# there are no missing windows
+# there are missing windows
 mw %>%
   group_by(animal) %>%
   transmute(dt = c(0, diff(date))) %>%
