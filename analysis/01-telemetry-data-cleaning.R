@@ -212,10 +212,17 @@ d %>%
   first() %>%
   ggplot(aes(long, lat)) +
   geom_path(aes(color = lubridate::decimal_date(timestamp))) +
-  geom_point(aes(shape = long < -81.55), color = 'red', size = 3) +
+  geom_point(aes(shape = long < -81.55), color = 'red', size = 3,
+             na.rm = TRUE) +
   scale_shape_manual(values = c(NA, 19)) +
   khroma::scale_color_smoothrainbow(name = 'Date', reverse = TRUE)
 i <- which(d$tel[[which(d$animal == ID)]]$long < - 81.55)
+layout(1:2)
+hist(out[i, 'speed'], xlab = 'Minimum speed (SLD; m/s)',
+     main = NULL)
+hist('hours' %#% out$dt[i], xlab = 'Interval between locations (hours)',
+     main = NULL)
+layout(1)
 d$tel[[which(d$animal == ID)]]$outlier[i] <- 1
 out <- check_animal(ID)
 plot(lat ~ long, d$tel[[which(d$animal == ID)]][- i, ])
