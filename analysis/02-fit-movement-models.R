@@ -142,3 +142,42 @@ plot_grid(ggplot(uds) +
             scale_color_manual(expression(bold(HR~'>'~10~km^2)),
                                values = c('black', 'red2')))
 Sys.time()
+
+# check missing windows ----
+mw <- map_dfr(list.files('models/moving-windows',
+                         pattern = '-window-7-days-dt-3-days.rds',
+                         full.names = TRUE), readRDS) %>%
+  mutate(group = factor(if_else(group == 'Ovariectomy', 'Treatment', group)),
+         animal = factor(animal)) %>%
+  select(group, animal, date)
+
+d_ref <- readr::read_csv('data/Odocoileus virginianus DeNicola South Euclid-reference-data.csv',
+                  show_col_types = FALSE, col_types = c(`animal-sex` = 'c')) %>%
+  rename_with(\(.names) gsub('-', '_', .names))
+
+# there are no missing windows
+mw %>%
+  group_by(animal) %>%
+  transmute(dt = c(0, diff(date))) %>%
+  pull(dt) %>%
+  unique()
+
+# create dotplot of moving windows
+ggplot(mw) +
+  geom_hline(aes(yintercept = animal_id), d_ref, color = 'grey') +
+  geom_point(aes(date, animal, color = group), pch = 20) +
+  geom_point(aes(deploy_on_date, animal_id, shape = 'start'), d_ref,
+             size = 5) +
+  geom_point(aes(deploy_off_date, animal_id, shape = 'end'), d_ref,
+             size = 5, na.rm = TRUE) +
+  geom_point(aes(animal_mortality_date, animal_id, shape = 'mortality'),
+             d_ref, size = 7, na.rm = TRUE) +
+  scale_color_manual('Group', values = PAL) +
+  scale_shape_manual('Event type', breaks = c('start', 'end', 'mortality'),
+                     values = c('[', ']', '\U00d7')) +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  labs(x = NULL, y = 'Animal ID') +
+  theme(legend.position = 'top')
+
+ggsave('figures/moving-window-dotplot.png', width = 10, height = 8,
+       units = 'in', dpi = 600, bg = 'white')
