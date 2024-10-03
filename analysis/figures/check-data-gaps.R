@@ -3,6 +3,8 @@ library('dplyr')   # for data wrangling
 library('tidyr')   # for data wrangling
 library('purrr')   # for funtional programming
 library('ggplot2') # for fancy plots
+library('sf')      # for spatial data
+library('ggmap')   # for basemaps
 library('cowplot') # for fancy multi-panel plots
 library('khroma')  # for rainbow color palette
 source('analysis/figures/default-ggplot-theme.R')
@@ -24,6 +26,18 @@ d %>%
             IQR = IQR(interval_h),
             mean = mean(interval_h),
             sd = sd(interval_h))
+
+# basemap
+bm <- d %>%
+  st_as_sf(coords = c('long', 'lat')) %>%
+  st_set_crs('EPSG:4326') %>%
+  st_bbox() %>%
+  st_as_sfc() %>%
+  st_as_sf() %>%
+  st_buffer(500) %>%
+  st_bbox() %>%
+  `names<-`(c('left', 'bottom', 'right', 'top')) %>%
+  get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
 
 ggplot(d, aes(long, lat, color = lubridate::decimal_date(timestamp))) +
   facet_wrap(~ animal, scales = 'free') +
@@ -58,7 +72,7 @@ dates <- as.Date(c('2023-02-01', '2023-02-08', '2023-04-08', '2023-04-15',
                    '2023-04-30', '2023-05-11', '2023-05-18', '2023-05-30'))
 abline(v = dates, col = 'red3')
 
-d %>%
+t_169 <- d %>%
   filter(animal == 'T_169') %>%
   mutate(excursion = lat < 41.5,
          trip = case_when(timestamp < dates[1] ~ 1,
@@ -71,30 +85,32 @@ d %>%
                           timestamp < dates[8] ~ 8)) %>%
   group_by(trip) %>%
   mutate(n = sum(excursion),
-         days = diff(range(timestamp[which(excursion)])) / 60^2 / 24,
-         days = round(days),
+         hours = diff(range(timestamp[which(excursion)])) / 60^2,
+         hours = round(as.numeric(hours)),
          start = as.Date(min(timestamp[which(excursion)])) %>%
            format(format = '%B %d'),
          end = as.Date(max(timestamp[which(excursion)])) %>%
            format(format = '%B %d')) %>%
   ungroup() %>%
-  mutate(lab = paste0('Trip ', trip, ' (', n, ' fixes in ', days,
-                      if_else(days == 1, ' day)', ' days)'),
+  mutate(lab = paste0('Trip ', trip, ' (', n, ' fixes in ', hours,
+                      if_else(hours == 1, ' hour)', ' hours)'),
                       ':\nfrom ', start, ' to ', end) %>%
-           gsub(' 0', ' ', .)) %>%
-  ggplot(aes(long, lat)) +
-  coord_equal() +
+           gsub(' 0', ' ', .))
+
+ggmap(bm) +
   facet_wrap(~ lab, nrow = 2) +
-  geom_path() +
-  geom_path(aes(color = excursion)) +
-  geom_point(aes(color = excursion), alpha = 0.3) +
+  geom_path(aes(long, lat), t_169) +
+  geom_path(aes(long, lat, color = excursion), t_169) +
+  geom_point(aes(long, lat, color = excursion), t_169, alpha = 0.3) +
   labs(x = 'Longitude', y = 'Latitude') +
-  scale_x_continuous(breaks = seq(-81.54, -81.51, by = 0.01)) +
-  scale_color_manual('Excursion', values = c('black', 'red')) +
+  scale_x_continuous(breaks = seq(-81.55, -81.49, by = 0.02),
+                     expand = c(0, 0)) +
+  scale_y_continuous(limits = c(41.451, 41.55), expand = c(0, 0)) +
+  scale_color_manual('Excursion', values = c('black', 'red2')) +
   theme(legend.position = 'top')
 
-ggsave('figures/T_169-excursions.png', width = 10, height = 10, dpi = 600,
-       bg = 'white')
+ggsave('figures/T_169-excursions.png', width = 10, height = 12.5,
+       dpi = 600, bg = 'white')
 
 # density plots of data gaps look similar between groups ----
 mw <- map_dfr(list.files('models/moving-windows',

@@ -3,6 +3,7 @@ library('dplyr')   # for data wrangling
 library('tidyr')   # for data wrangling
 library('purrr')   # for funtional programming
 library('ggplot2') # for fancy plots
+library('ggmap')   # for basemaps
 library('cowplot') # for fancy multi-panel plots
 library('sf')      # for spatial data (UD polygons)
 library('mgcv')    # for GAMs
@@ -161,17 +162,32 @@ tel_169 <- SpatialPointsDataFrame.telemetry(mm$tel[[T_169]]) %>%
   st_coordinates() %>%
   as_tibble()
 
+# basemap
+bm <- readRDS('data/cleaned-telemetry-data.rds') %>%
+  unnest(tel) %>%
+  filter(! outlier) %>%
+  st_as_sf(coords = c('long', 'lat')) %>%
+  st_set_crs('EPSG:4326') %>%
+  st_bbox() %>%
+  st_as_sfc() %>%
+  st_as_sf() %>%
+  st_buffer(2000) %>%
+  st_bbox() %>%
+  `names<-`(c('left', 'bottom', 'right', 'top')) %>%
+  get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
+
 plot_grid(
-  ggplot() +
+  ggmap(bm) +
     geom_sf(aes(geometry = geometry, lwd = est), ud_169,
-            fill = '#00000007', show.legend = FALSE) +
-    geom_point(aes(X, Y), tel_169, size = 0.5) +
-    geom_path(aes(X, Y), tel_169, alpha = 0.2) +
+            fill = '#00000017', show.legend = FALSE, inherit.aes = FALSE) +
+    geom_point(aes(X, Y), tel_169, size = 0.5, inherit.aes = FALSE) +
+    geom_path(aes(X, Y), tel_169, alpha = 0.2, inherit.aes = FALSE) +
     labs(x = NULL, y = NULL) +
     scale_linewidth_manual(values = c(0.25, 0.75)),
-  ggplot() +
+  ggmap(bm) +
     geom_sf(aes(geometry = geometry, lwd = est, color = animal != 'T_169'),
-            uds, fill = '#00000007', show.legend = FALSE) +
+            uds, fill = '#00000017', show.legend = FALSE,
+            inherit.aes = FALSE) +
     labs(x = NULL, y = NULL) +
     scale_linewidth_manual(values = c(0.25, 0.75)) +
     scale_color_manual(NULL, values = c('red3', 'black'),
