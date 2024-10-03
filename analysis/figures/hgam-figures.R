@@ -105,7 +105,6 @@ preds <- bind_cols(newd,
   mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
 
 # get estimates and CIs for the intercept values ----
-#' *using odds for beta*
 get_cis <- function(m) {
   b <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Estimate']
   se <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Std. Error']
