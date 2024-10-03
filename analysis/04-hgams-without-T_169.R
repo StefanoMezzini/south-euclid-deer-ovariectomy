@@ -106,7 +106,9 @@ ggplot(mw, aes(posixct, speed_m_s, group = animal)) +
 
 # figure comparing parameters of T_169 to others ----
 plot_grid(
-  ggplot(mw, aes(posixct, hr_est_95, color = animal != 'T_169')) +
+  mw %>%
+    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
+    ggplot(aes(posixct, hr_est_95, color = animal != 'T_169')) +
     facet_wrap(~ group) +
     geom_line(aes(group = animal)) +
     geom_point() +
@@ -115,14 +117,18 @@ plot_grid(
                        labels = c('Deer T_169', 'Other deer')) +
     theme(legend.position = 'inside',
           legend.position.inside = c(0.92, 0.8)),
-  ggplot(mw, aes(posixct, diffusion_km2_day, color = animal != 'T_169')) +
+  mw %>%
+    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
+    ggplot(aes(posixct, diffusion_km2_day, color = animal != 'T_169')) +
     facet_wrap(~ group) +
     geom_line(aes(group = animal)) +
     geom_point() +
     labs(x = NULL, y = expression(bold(Diffusion~(km^2/day)))) +
     scale_color_manual(values = c('red3', '#00000016')) +
     theme(legend.position = 'none'),
-  ggplot(d, aes(date, excursivity, group = animal,
+  d %>%
+    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
+    ggplot(aes(date, excursivity, group = animal,
                 color = animal != 'T_169')) +
     facet_wrap(~ group) +
     geom_point() +

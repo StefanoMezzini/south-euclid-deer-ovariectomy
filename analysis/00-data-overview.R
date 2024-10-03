@@ -14,7 +14,7 @@ d <- read_csv('data/Odocoileus virginianus DeNicola South Euclid.csv',
          hdop = `gps:hdop`,
          fix_type = `sensolus:fix_type`) %>%
   mutate(group = if_else(grepl('T_', animal_id),
-                         'Ovariectomy', 'Control'))
+                         'Treatment', 'Control'))
 
 glimpse(d)
 
@@ -115,7 +115,7 @@ d %>%
   ggplot() +
   facet_wrap(~ animal_id, scales = 'free_y', ncol = 4) +
   geom_histogram(aes(log10(dt), fill = group), na.rm = TRUE) +
-  scale_fill_manual(NULL, values = PAL) +
+  scale_fill_manual('Group', values = PAL) +
   scale_x_continuous(expression(bold(log[10](paste(Delta, t))~(hours))),
                      breaks = c(-2, 0, 2), labels = 10^c(-2, 0, 2)) +
   ylab('Count') +

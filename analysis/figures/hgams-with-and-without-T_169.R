@@ -44,7 +44,8 @@ intercepts <-
     parameter == 'exc' ~ 'Excursivity') %>%
       factor(., levels = c('Home-range size (km\U00B2)',
                            'Diffusion (km\U00B2/day)',
-                           'Excursivity')))
+                           'Excursivity')),
+    group = if_else(group == 'Ovariectomy', 'Treatment' , group))
 
 unique(last_dplyr_warnings())
 
@@ -93,7 +94,8 @@ plot_partials <- function(param) {
     mutate(#across(c(lwr, mu, upr), g_inv),
       g = case_when(is.na(animal_year) ~ 'pop',
                      grepl('T_169', animal_year) ~ 'T_169',
-                     ! is.na(animal_year) ~ 're')) %>%
+                     ! is.na(animal_year) ~ 're'),
+      group = if_else(group == 'Ovariectomy', 'Treatment', 'Control')) %>%
     ggplot(aes(doy, mu)) +
     facet_grid(term + group ~ with_T_169, scales = 'free_y') +
     geom_hline(yintercept = 0, color = 'grey') +
