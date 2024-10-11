@@ -1,11 +1,12 @@
-library('dplyr')   # for data wrangling
-library('tidyr')   # for data wrangling
-library('purrr')   # for functional programming
-library('ctmm')    # for calculating excursivity
-library('ggplot2') # for fancy plots
-library('cowplot') # for fancy multi-panel plots
-library('mgcv')    # for GAMs
-library('gratia')  # for ggplot-based model plots
+library('dplyr')     # for data wrangling
+library('tidyr')     # for data wrangling
+library('purrr')     # for functional programming
+library('ctmm')      # for calculating excursivity
+library('ggplot2')   # for fancy plots
+library('cowplot')   # for fancy multi-panel plots
+library('mgcv')      # for GAMs
+library('gratia')    # for ggplot-based model plots
+library('lubridate') # for working with dates
 source('analysis/figures/default-ggplot-theme.R')
 
 # import moving window data ----
@@ -14,10 +15,10 @@ mw <- map_dfr(list.files('models/moving-windows',
                          full.names = TRUE), readRDS) %>%
   filter(! grepl('T_169', animal)) %>%
   select(! c(hr_lwr_95, hr_upr_95)) %>%
-  mutate(doy = lubridate::yday(date),
+  mutate(doy = yday(date),
          group = if_else(group == 'Ovariectomy', 'Treatment', group) %>%
            factor(),
-         animal_year = paste(animal, lubridate::year(date)) %>%
+         animal_year = paste(animal, year(date)) %>%
            factor())
 
 # daily excursivity data ----
@@ -35,12 +36,12 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
          group = if_else(group == 'ovariectomy', 'treatment', group) %>%
            stringr::str_to_sentence() %>%
            factor(),
-         doy = lubridate::yday(timestamp),
+         doy = yday(timestamp),
          date = as.Date(timestamp)) %>%
   group_by(group, animal, doy, date) %>%
   summarize(excursivity = mean(excursivity)) %>%
   ungroup() %>%
-  mutate(animal_year = factor(paste(animal, lubridate::year(date))))
+  mutate(animal_year = factor(paste(animal, year(date))))
 
 # import number of daily fixes
 fixes <- readRDS('data/cleaned-telemetry-data.rds') %>%
@@ -61,8 +62,25 @@ fixes <- readRDS('data/cleaned-telemetry-data.rds') %>%
   unnest(tel) %>%
   mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group) %>%
            factor(),
-         doy = lubridate::yday(date),
-         animal_year = factor(paste(animal, lubridate::year(date))))
+         doy = yday(date),
+         animal_year = factor(paste(animal, year(date))))
+
+#' figure of `n_fixes` with period in which the library station was down
+#' **DOES NOT ACCOUNT FOR INDIVIDUALS**
+ggplot(fixes, aes(date, daily_fixes)) +
+  facet_grid(group ~ .) +
+  geom_vline(xintercept = date('2023-05-15'), color = 'red4') +
+  geom_vline(xintercept = date('2023-07-11'), color = 'red4') +
+  geom_point(aes(color = factor(date > date('2023-05-15') &
+                                  date < date('2023-07-11'))),
+             alpha = 0.2) +
+  geom_smooth(method = 'gam', formula = y ~ s(x, k = 30, bs = 'ad'),
+              color = 'dodgerblue2', n = 400,
+              method.args = list(family = tw(link = 'log'))) +
+  labs(x = NULL, y = 'Number of fixes in a day') +
+  scale_color_manual('Library station down', values = 1:2,
+                     labels = c('No', 'Yes')) +
+  theme(legend.position = 'none')
 
 # import models ----
 m_hr <- readRDS('models/m-hr-without-T_169.rds')
@@ -158,8 +176,8 @@ filter(mw, hr_est_95 > 10) %>%
 p_hr <-
   ggplot(preds) +
   facet_grid(. ~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, hr_est_95), mw, alpha = 0.2, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
               alpha = 0.2) +
@@ -177,8 +195,8 @@ p_hr <-
 p_diff <-
   ggplot(preds) +
   facet_grid(. ~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.2, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
               alpha = 0.2) +
@@ -194,8 +212,8 @@ p_diff <-
 p_exc <-
   ggplot(preds) +
   facet_grid(. ~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, excursivity), d, alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
               alpha = 0.2) +
@@ -217,8 +235,8 @@ ggsave('figures/hgam-figure-with-data.png', width = 16, height = 12,
 p_fix <-
   ggplot(preds) +
   facet_grid(. ~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, daily_fixes), fixes, alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
               alpha = 0.2) +
@@ -238,8 +256,8 @@ ggsave('figures/daily-fixes-figure-with-data.png', p_fix,
 p_hr <-
   ggplot(preds) +
   facet_wrap(~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
@@ -254,8 +272,8 @@ p_hr <-
 p_diff <-
   ggplot(preds) +
   facet_wrap(~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
@@ -270,8 +288,8 @@ p_diff <-
 p_exc <-
   ggplot(preds) +
   facet_wrap(~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
@@ -292,8 +310,8 @@ ggsave('figures/hgam-figure.png', width = 16, height = 12, units = 'in',
 p_fix <-
   ggplot(preds) +
   facet_wrap(~ group) +
-  geom_vline(xintercept = lubridate::yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = lubridate::yday('2023-11-10'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
+  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
