@@ -27,6 +27,15 @@ stations <- tibble(
   st_as_sf(coords = c('long', 'lat')) %>%
   st_set_crs('EPSG:4326')
 
+# South Euclid boundaries
+# from https://catalog.data.gov/dataset/tiger-line-shapefile-2019-state-ohio-current-place-state-based
+se <- read_sf('data/ohio-shp/tl_2019_39_place.shp') %>%
+  filter(NAME == 'South Euclid') %>%
+  st_geometry() %>%
+  st_as_sf() %>%
+  st_transform('EPSG:4326')
+
+# S. Green Road 
 green_rd <-
   tibble(
     long = -81 - c(.546, .542, .526, .521, .520, .5195, .5195, .517, .517),
@@ -36,36 +45,30 @@ green_rd <-
   st_cast("LINESTRING") %>%
   st_set_crs('EPSG:4326')
 
-# project to UTM 17N
-# stations_utm <- st_transform(stations, 'EPSG:26917')
-
-area <- bind_rows(stations, tels) %>%
+# background map of telemetry locations and stations, buffered by 1 km
+se_map <- bind_rows(stations, tels) %>%
   st_bbox() %>%
   st_as_sfc() %>%
   st_as_sf() %>%
-  st_buffer(1e3)
-
-se_map <- area %>%
+  st_buffer(1e3) %>%
   st_bbox() %>%
   `names<-`(c('left', 'bottom', 'right', 'top')) %>%
   get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
 
 p_a <-
   ggmap(se_map) +
+  geom_sf(inherit.aes = FALSE, data = se, color = 'darkred', lwd = 1,
+          fill = 'transparent') +
   geom_path(aes(X, Y, group = animal), bind_cols(tels, st_coordinates(tels)),
             inherit.aes = FALSE, alpha = 0.5, linewidth = 0.1) +
   geom_sf(data = tels, inherit.aes = FALSE, alpha = 0.5, size = 0.2) +
   geom_sf(data = green_rd, inherit.aes = FALSE, color = 'darkorange',
-          linewidth = 2) +
+          linewidth = 1) +
   geom_sf(data = stations, inherit.aes = FALSE, size = 3.5) +
   geom_sf(data = stations, inherit.aes = FALSE, size = 1.75, color = 'white') +
   labs(x = 'Longitude', y = 'Latitude')
 
-se <- stations %>%
-  select(! name) %>%
-  st_union() %>%
-  st_centroid() %>%
-  st_as_sf()
+se_center <- st_as_sf(st_centroid(se))
 
 us_states <- st_transform(us_states, 'EPSG:32617')
 
@@ -73,7 +76,7 @@ ohio <- filter(us_states, NAME == 'Ohio')
 
 p_b <- ggplot() +
   geom_sf(data = ohio, fill = 'black') +
-  geom_sf(data = se, color = 'darkorange', size = 2) +
+  geom_sf(data = se_center, color = 'darkorange', size = 2) +
   theme_map()
 
 p_c <- ggplot() +
@@ -87,3 +90,41 @@ plot_grid(p_a,
 
 ggsave('figures/south-euclid-map.png',
        width = 7, height = 14 * (7/6), units = 'in', dpi = 600, bg = 'white')
+
+# find mean number of locations inside and outside of South Euclid ----
+# without grouping by animal
+tels %>%
+  mutate(.,
+         group = if_else(grepl('C', animal), 'Control', 'Treatment'),
+         inside = st_intersects(., se, sparse = FALSE)[, 1]) %>%
+  st_drop_geometry() %>%
+  group_by(group) %>%
+  summarize(prop_inside_se = mean(inside))
+
+# without grouping by animal and without 169
+tels %>%
+  filter(animal != 'T_169') %>%
+  mutate(.,
+         group = if_else(grepl('C', animal), 'Control', 'Treatment'),
+         inside = st_intersects(., se, sparse = FALSE)[, 1]) %>%
+  st_drop_geometry() %>%
+  group_by(group) %>%
+  summarize(prop_inside_se = mean(inside))
+
+# grouping by animal: proportion of fixes
+p_inside_a <- tels %>%
+  mutate(.,
+         group = if_else(grepl('C', animal), 'Control', 'Treatment'),
+         inside = st_intersects(., se, sparse = FALSE)[, 1]) %>%
+  st_drop_geometry() %>%
+  group_by(group, animal) %>%
+  summarize(prop_inside_se = mean(inside)) # by animal
+
+# with T_169
+p_inside_a %>% # still grouped by treatment group
+  summarize(prop_inside_se = mean(prop_inside_se)) # by group
+
+# without T_169
+p_inside_a %>% # still grouped by treatment group
+  filter(animal != 'T_169') %>%
+  summarize(prop_inside_se = mean(prop_inside_se)) # by group
