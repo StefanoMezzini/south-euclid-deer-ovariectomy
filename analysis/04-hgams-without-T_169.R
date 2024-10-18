@@ -137,7 +137,7 @@ plot_grid(
     labs(x = NULL, y = 'Excursivity') +
     scale_color_manual(values = c('red3', '#00000016')) +
     theme(legend.position = 'none'),
-  ncol = 1)
+  ncol = 1, labels = 'auto')
 ggsave('figures/deer-T_169-comparison.png', width = 10, height = 8)
 
 # make figures of full UDs ----
@@ -163,18 +163,19 @@ tel_169 <- SpatialPointsDataFrame.telemetry(mm$tel[[T_169]]) %>%
   as_tibble()
 
 # basemap
-bm <- readRDS('data/cleaned-telemetry-data.rds') %>%
-  unnest(tel) %>%
-  filter(! outlier) %>%
-  st_as_sf(coords = c('long', 'lat')) %>%
-  st_set_crs('EPSG:4326') %>%
-  st_bbox() %>%
-  st_as_sfc() %>%
-  st_as_sf() %>%
-  st_buffer(2000) %>%
-  st_bbox() %>%
-  `names<-`(c('left', 'bottom', 'right', 'top')) %>%
-  get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
+if(file.exists('data/south-euclid-basemap.rds')) {
+  bm <- readRDS('data/south-euclid-basemap.rds')
+} else {
+  bm <- bind_rows(stations, tels) %>%
+    st_bbox() %>%
+    st_as_sfc() %>%
+    st_as_sf() %>%
+    st_buffer(1e3) %>%
+    st_bbox() %>%
+    `names<-`(c('left', 'bottom', 'right', 'top')) %>%
+    get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
+  saveRDS(bm, 'data/south-euclid-basemap.rds')
+}
 
 plot_grid(
   ggmap(bm) +
@@ -192,7 +193,7 @@ plot_grid(
     scale_linewidth_manual(values = c(0.25, 0.75)) +
     scale_color_manual(NULL, values = c('red3', 'black'),
                        labels = c('Deer T_169', 'Other deer')),
-  labels = 'AUTO')
+  labels = 'auto')
 
 ggsave('figures/deer-T_169-comparison-ud.png', width = 10, height = 8,
        bg = 'white')
