@@ -226,7 +226,7 @@ p_exc <-
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'none')
 
-plot_grid(p_hr, p_diff, p_exc, labels = 'AUTO', ncol = 1)
+plot_grid(p_hr, p_diff, p_exc, labels = 'auto', ncol = 1)
 
 ggsave('figures/hgam-figure-with-data.png', width = 16, height = 12,
        units = 'in', dpi = 600, bg = 'white')
@@ -301,7 +301,7 @@ p_exc <-
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'none')
 
-plot_grid(p_hr, p_diff, p_exc, labels = c('A', 'B', 'C'), ncol = 1)
+plot_grid(p_hr, p_diff, p_exc, labels = 'auto', ncol = 1)
 
 ggsave('figures/hgam-figure.png', width = 16, height = 12, units = 'in',
        dpi = 600, bg = 'white')
@@ -325,3 +325,26 @@ p_fix <-
 
 ggsave('figures/daily-fixes-figure.png', p_fix,
        width = 16, height = 6, units = 'in', dpi = 600, bg = 'white')
+
+# get estimates and CIs for the intercept values ----
+get_cis <- function(m) {
+  l_inv <- inv_link(m)
+  
+  tibble(group = c('Control', 'Ovariectomy'),
+         doy = 0,
+         doy_cr = 0,
+         animal_year = m$model$animal_year[1]) %>%
+    bind_cols(.,
+              predict(m, newdata = ., se.fit = TRUE, discrete = FALSE,
+                      terms = c('(Intercept)', 'group')) %>%
+                as.data.frame()) %>%
+    mutate(lwr_95 = l_inv(fit - 1.96 * se.fit),
+           mu = l_inv(fit),
+           upr_95 = l_inv(fit + 1.96 * se.fit)) %>%
+    select(group, lwr_95, mu, upr_95)
+}
+
+# without T_169
+get_cis(readRDS('models/m-hr-without-T_169.rds'))
+get_cis(readRDS('models/m-diff-without-T_169.rds'))
+get_cis(readRDS('models/m-exc-without-T_169.rds'))

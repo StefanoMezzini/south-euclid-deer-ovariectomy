@@ -46,14 +46,19 @@ green_rd <-
   st_set_crs('EPSG:4326')
 
 # background map of telemetry locations and stations, buffered by 1 km
-se_map <- bind_rows(stations, tels) %>%
-  st_bbox() %>%
-  st_as_sfc() %>%
-  st_as_sf() %>%
-  st_buffer(1e3) %>%
-  st_bbox() %>%
-  `names<-`(c('left', 'bottom', 'right', 'top')) %>%
-  get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
+if(file.exists('data/south-euclid-basemap.rds')) {
+  se_map <- readRDS('data/south-euclid-basemap.rds')
+} else {
+  se_map <- bind_rows(stations, tels) %>%
+    st_bbox() %>%
+    st_as_sfc() %>%
+    st_as_sf() %>%
+    st_buffer(1e3) %>%
+    st_bbox() %>%
+    `names<-`(c('left', 'bottom', 'right', 'top')) %>%
+    get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
+  saveRDS(se_map, 'data/south-euclid-basemap.rds')
+}
 
 p_a <-
   ggmap(se_map) +
@@ -85,8 +90,8 @@ p_c <- ggplot() +
   theme_map()
 
 plot_grid(p_a,
-          plot_grid(p_b, p_c, labels = c('B', 'C'), nrow = 1),
-          ncol = 1, rel_heights = c(6, 1))
+          plot_grid(p_b, p_c, labels = c('b', 'c'), nrow = 1),
+          labels = c('a', ''), ncol = 1, rel_heights = c(6, 1))
 
 ggsave('figures/south-euclid-map.png',
        width = 7, height = 14 * (7/6), units = 'in', dpi = 600, bg = 'white')

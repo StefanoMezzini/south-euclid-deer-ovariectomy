@@ -48,3 +48,6 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 /writing/comments
+
+# ignore SE basemap
+data/south-euclid-basemap.rds

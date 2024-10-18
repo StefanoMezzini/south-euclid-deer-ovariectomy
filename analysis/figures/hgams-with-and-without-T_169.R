@@ -123,7 +123,7 @@ p_effects <- plot_grid(p_intercepts,
                        plot_partials(param = 'hr'),
                        plot_partials(param = 'diff'),
                        plot_partials(param = 'exc'),
-                       labels = 'AUTO')
+                       labels = 'auto')
 
 ggsave('figures/partial-effects.png', p_effects, width = 16, height = 16,
        units = 'in', dpi = 600, bg = 'white')
@@ -142,7 +142,7 @@ p_diag <- plot_grid(
   appraise(models$model[[5]], type = 'pearson', point_alpha = 0.1),
   appraise(models$model[[6]], type = 'pearson', point_alpha = 0.1),
   nrow = 2, byrow = FALSE, rel_widths = c(10, 1, 10, 1, 10),
-  labels = c('A', '', 'B', '', 'C', 'D', '', 'E', '', 'F'))
+  labels = c('a', '', 'b', '', 'c', 'd', '', 'e', '', 'f'))
 
 ggsave('figures/model-diagnostics.png', p_diag, width = 12, height = 8,
        units = 'in', dpi = 600, bg = 'white', scale = 2)
