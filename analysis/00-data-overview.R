@@ -130,6 +130,18 @@ d %>%
   summarize(median_dt = round(median(diff(timestamp, units = 'hours')), 2),
             duration = round(diff(range(timestamp))))
 
+# look at range and mean of median dt and sampling duration
+d %>%
+  group_by(animal_id) %>%
+  summarize(median_dt = round(median(diff(timestamp, units = 'hours')), 2),
+            duration = round(diff(range(timestamp)))) %>%
+  summarize(min_median_dt = min(median_dt),
+            mean_median_dt = mean(median_dt),
+            max_median_dt = max(median_dt),
+            min_duration = min(duration),
+            mean_duration = round(mean(duration)),
+            max_duration = max(duration))
+
 # check some of the spotty telemetries
 tels <- as.telemetry(d)
 
