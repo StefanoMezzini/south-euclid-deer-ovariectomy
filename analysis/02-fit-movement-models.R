@@ -32,6 +32,15 @@ m <- d %>%
                      .progress = TRUE))
 saveRDS(m, 'models/full-telemetry-movement-models.rds')
 
+tau_ps <- 'days' %#% map_dbl(m$mm, \(.m) {
+  summary(.m, units = FALSE)$CI['τ[position] (seconds)', 'est']
+})
+hist(tau_ps)
+mean(tau_ps)
+sd(tau_ps)
+
+range(tau_ps[- which.max(tau_ps)])
+
 # fit moving window models and UDs ----
 if(! dir.exists('figures/moving-windows')) dir.create('figures/moving-windows')
 if(! dir.exists('models/moving-windows')) dir.create('models/moving-windows')
