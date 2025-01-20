@@ -97,7 +97,7 @@ plot_partials <- function(param) {
                      ! is.na(animal_year) ~ 're'),
       group = if_else(group == 'Ovariectomy', 'Treatment', 'Control')) %>%
     ggplot(aes(doy, mu)) +
-    facet_grid(term + group ~ with_T_169, scales = 'free_y') +
+    facet_grid(term + group ~ with_T_169, scales = 'fixed') +
     geom_hline(yintercept = 0, color = 'grey') +
     geom_ribbon(aes(ymin = lwr, ymax = upr, group = animal_year,
                     fill = g), alpha = 0.1, show.legend = FALSE) +
