@@ -8,12 +8,13 @@ library('mgcv')      # for GAMs
 library('gratia')    # for ggplot-based model plots
 library('lubridate') # for working with dates
 source('analysis/figures/default-ggplot-theme.R')
+source('functions/get_cis.R')
+source('functions/get_preds.R')
 
 # import moving window data ----
 mw <- map_dfr(list.files('models/moving-windows',
                          pattern = '-window-7-days-dt-3-days.rds',
                          full.names = TRUE), readRDS) %>%
-  filter(! grepl('T_169', animal)) %>%
   select(! c(hr_lwr_95, hr_upr_95)) %>%
   mutate(doy = yday(date),
          group = if_else(group == 'Ovariectomy', 'Treatment', group) %>%
@@ -23,7 +24,6 @@ mw <- map_dfr(list.files('models/moving-windows',
 
 # daily excursivity data ----
 d <- readRDS('models/full-telemetry-movement-models.rds') %>%
-  filter(! grepl('T_169', animal)) %>%
   mutate(tel = map2(tel, ud, \(.t, .u) {
     .r <- raster(.u, DF = 'CDF')
     .t <- data.frame(.t) %>%
@@ -83,9 +83,9 @@ ggplot(fixes, aes(date, daily_fixes)) +
   theme(legend.position = 'none')
 
 # import models ----
-m_hr <- readRDS('models/m-hr-without-T_169.rds')
-m_diff <- readRDS('models/m-diff-without-T_169.rds')
-m_exc <- readRDS('models/m-exc-without-T_169.rds')
+m_hr <- readRDS('models/m-hr-with-T_169.rds')
+m_diff <- readRDS('models/m-diff-with-T_169.rds')
+m_exc <- readRDS('models/m-exc-with-T_169.rds')
 m_fix <- readRDS('models/daily-fixes-hgam.rds')
 
 # make predictions ----
@@ -93,27 +93,6 @@ newd <- expand_grid(group = unique(m_hr$model$group),
                     doy = seq(1, 365, length.out = 400),
                     doy_cr = 0,
                     animal_year = 'new animal')
-
-get_preds <- function(parameter) {
-  m <- get(paste0('m_', parameter))
-  
-  pr <- predict(m, newdata = newd, type = 'link', se.fit = TRUE,
-                exclude = c('s(doy_cr,animal_year):groupControl',
-                            's(doy_cr,animal_year):groupOvariectomy',
-                            's(doy_cr,animal_year)'),
-                # Smoothness uncertainty corrected covariance not available
-                discrete = FALSE, unconditional = FALSE) %>%
-    as.data.frame() %>%
-    transmute(mu = inv_link(m)(fit),
-              lwr_50 = inv_link(m)(fit - se.fit * 0.67),
-              upr_50 = inv_link(m)(fit + se.fit * 0.67),
-              lwr_95 = inv_link(m)(fit - se.fit * 1.96),
-              upr_95 = inv_link(m)(fit + se.fit * 1.96))
-  
-  colnames(pr) <- paste0(parameter, '_', colnames(pr))
-  
-  return(pr)
-}
 
 preds <- bind_cols(newd,
                    get_preds(parameter = 'hr'),
@@ -123,47 +102,20 @@ preds <- bind_cols(newd,
   mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
 
 # get estimates and CIs for the intercept values ----
-get_cis <- function(m) {
-  b <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Estimate']
-  se <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Std. Error']
-  p <- summary(m, re.test = FALSE)$p.table['groupOvariectomy', 'Pr(>|t|)']
-  
-  l_inv <- m$family$linkinv
-  
-  # beta estiamates are centered at 0.5 = 50% by default
-  if(grepl('Beta', m$family$family))  {
-    cat('Estimate: ', round(l_inv(b), 2) * 100 - 100 + 50,
-        '%\n95% CI: (', round(l_inv(b - se * 1.96), 2) * 100 - 100 + 50,
-        '%, ', round(l_inv(b + se * 1.96), 2) * 100 - 100 + 50,
-        '%)\np-value: ', p, '\n', sep = '')
-  } else {
-    cat('Estimate: ', round(l_inv(b), 2) * 100 - 100,
-        '%\n95% CI: (', round(l_inv(b - se * 1.96), 2) * 100 - 100,
-        '%, ', round(l_inv(b + se * 1.96), 2) * 100 - 100,
-        '%)\np-value: ', p, '\n', sep = '')
-  }
-}
-
-# without T_169
+# with T_169
 get_cis(m_fix)
 get_cis(m_hr)
 get_cis(m_diff)
 get_cis(m_exc)
 
-# with T_169
-get_cis(readRDS('models/m-hr-with-T_169.rds'))
-get_cis(readRDS('models/m-diff-with-T_169.rds'))
-get_cis(readRDS('models/m-exc-with-T_169.rds'))
+# without T_169
+get_cis(readRDS('models/m-hr-without-T_169.rds'))
+get_cis(readRDS('models/m-diff-without-T_169.rds'))
+get_cis(readRDS('models/m-exc-without-T_169.rds'))
 
 # make figures ----
 doy_breaks <- c(1, 91, 182, 274)
 doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%B 1')
-
-#' `coplot::get_legend()` fails (v. 1.1.3.9000)
-get_legend <- function(.plot) {
-  get_plot_component(.plot + theme(legend.position = 'top'),
-                     pattern = 'guide-box-top', return_all = TRUE)
-}
 
 theme_set(theme_get() +
             theme(plot.margin = unit(c(5.5, 20, 5.5, 5.5), units = 'pt')))
@@ -197,7 +149,9 @@ p_diff <-
   facet_grid(. ~ group) +
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
-  geom_point(aes(doy, diffusion_km2_day), mw, alpha = 0.2, na.rm = TRUE) +
+  # dropping one extreme estimate from the plot for readability
+  geom_point(aes(doy, diffusion_km2_day),
+             filter(mw, diffusion_km2_day < 2), alpha = 0.2, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
@@ -228,7 +182,7 @@ p_exc <-
 
 plot_grid(p_hr, p_diff, p_exc, labels = 'auto', ncol = 1)
 
-ggsave('figures/hgam-figure-with-data.png', width = 16, height = 12,
+ggsave('figures/hgam-figure-with-data-with-T_169.png', width = 16, height = 12,
        units = 'in', dpi = 600, bg = 'white')
 
 # daily fixes
@@ -249,7 +203,7 @@ p_fix <-
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'none')
 
-ggsave('figures/daily-fixes-figure-with-data.png', p_fix,
+ggsave('figures/daily-fixes-figure-with-data-with-T_169.png', p_fix,
        width = 16, height = 6, units = 'in', dpi = 600, bg = 'white')
 
 # without data points ----
@@ -303,48 +257,5 @@ p_exc <-
 
 plot_grid(p_hr, p_diff, p_exc, labels = 'auto', ncol = 1)
 
-ggsave('figures/hgam-figure.png', width = 16, height = 12, units = 'in',
+ggsave('figures/hgam-figure-with-T_169.png', width = 16, height = 12, units = 'in',
        dpi = 600, bg = 'white')
-
-# daily fixes
-p_fix <-
-  ggplot(preds) +
-  facet_wrap(~ group) +
-  geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
-  geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
-              alpha = 0.2) +
-  geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
-              alpha = 0.2) +
-  geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
-  scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
-                     expand = c(0, 0)) +
-  ylab('Number of daily fixes') +
-  scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
-  theme(legend.position = 'none')
-
-ggsave('figures/daily-fixes-figure.png', p_fix,
-       width = 16, height = 6, units = 'in', dpi = 600, bg = 'white')
-
-# get estimates and CIs for the intercept values ----
-get_cis <- function(m) {
-  l_inv <- inv_link(m)
-  
-  tibble(group = c('Control', 'Ovariectomy'),
-         doy = 0,
-         doy_cr = 0,
-         animal_year = m$model$animal_year[1]) %>%
-    bind_cols(.,
-              predict(m, newdata = ., se.fit = TRUE, discrete = FALSE,
-                      terms = c('(Intercept)', 'group')) %>%
-                as.data.frame()) %>%
-    mutate(lwr_95 = l_inv(fit - 1.96 * se.fit),
-           mu = l_inv(fit),
-           upr_95 = l_inv(fit + 1.96 * se.fit)) %>%
-    select(group, lwr_95, mu, upr_95)
-}
-
-# without T_169
-get_cis(readRDS('models/m-hr-without-T_169.rds'))
-get_cis(readRDS('models/m-diff-without-T_169.rds'))
-get_cis(readRDS('models/m-exc-without-T_169.rds'))
