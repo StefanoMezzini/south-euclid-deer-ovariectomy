@@ -6,9 +6,9 @@ library('gratia')    #' for `inv_link()`
 source('analysis/figures/default-ggplot-theme.R')
 
 # import models ----
-m_hr <- readRDS('models/m-hr-without-T_169.rds')
-m_diff <- readRDS('models/m-diff-without-T_169.rds')
-m_exc <- readRDS('models/m-exc-without-T_169.rds')
+m_hr <- readRDS('models/m-hr-with-T_169.rds')
+m_diff <- readRDS('models/m-diff-with-T_169.rds')
+m_exc <- readRDS('models/m-exc-with-T_169.rds')
 
 doy_breaks <- c(1, 91, 182, 274)
 doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%B 1')
@@ -19,6 +19,7 @@ newd <- expand_grid(group = unique(m_hr$model$group),
                     doy_cr = 0,
                     animal_year = 'new animal')
 
+#' unlike `functions/get_preds.R`, adds the data a column of parameter
 get_preds <- function(parameter) {
   m <- get(paste0('m_', parameter))
   
