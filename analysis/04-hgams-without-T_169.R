@@ -10,7 +10,7 @@ library('mgcv')    # for GAMs
 library('gratia')  # for ggplot-based model plots
 source('analysis/figures/default-ggplot-theme.R')
 
-# moving window data ----
+# moving window data (dropping T_169 later) ----
 mw <- map_dfr(list.files('models/moving-windows',
                          pattern = '-window-7-days-dt-3-days.rds',
                          full.names = TRUE), readRDS) %>%
@@ -72,38 +72,6 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   summarize(excursivity = mean(excursivity)) %>%
   ungroup() %>%
   mutate(animal_year = factor(paste(animal, lubridate::year(date))))
-
-d %>%
-  mutate(excursivity = if_else(animal == 'T_169', NA_real_, excursivity)) %>%
-  group_by(group) %>%
-  summarize(used = sum(! is.na(excursivity )), n = n(), .groups = 'drop') %>%
-  bind_rows(.,
-            bind_cols(group = 'Total', t(colSums(select(., -1))))) %>%
-  mutate(used = paste0(round(used / n * 100, 1), '%'))
-
-ggplot(d, aes(doy, excursivity, group = animal_year)) +
-  facet_wrap(~ group, ncol = 1) +
-  geom_point() +
-  geom_line() +
-  geom_smooth(color = 'darkorange', method = 'gam', formula = y ~ s(x),
-              method.args = list(family = betar()))
-
-#' 9 of the does were tracked in both years (need to use `animal_year`)
-mw %>%
-  group_by(animal) %>%
-  summarize(n = n_distinct(animal_year)) %>%
-  filter(n == 2)
-
-# not enough speed estimates to do anything meaningful
-mw %>%
-  group_by(group) %>%
-  summarize(has_speed = sum(! is.na(speed_m_s)),
-            total = n())
-
-ggplot(mw, aes(posixct, speed_m_s, group = animal)) +
-  facet_wrap(~ group, ncol = 1) +
-  geom_line() +
-  geom_point(alpha = 0.3)
 
 # figure comparing parameters of T_169 to others ----
 plot_grid(
@@ -211,6 +179,7 @@ m_hr <- bam(
       xt = list(bs = 'cr')),
   family = Gamma('log'),
   data = mw,
+  subset = hr_est_95 < 10,
   method = 'fREML',
   discrete = TRUE,
   knots = list(doy = c(0.5, 365.5)))
@@ -220,6 +189,8 @@ draw(m_hr, nrow = 3, parametric = TRUE, residuals = TRUE)
 saveRDS(m_hr, file = 'models/m-hr-without-T_169.rds')
 
 # diffusion ----
+filter(mw, diffusion_km2_day > 2) # no values > 2
+
 m_diff <- bam(
   diffusion_km2_day ~
     group + #' `by` requires an explicit intercept for each group
@@ -254,6 +225,7 @@ appraise(m_exc, type = 'pearson', point_alpha = 0.1)
 draw(m_exc, parametric = TRUE, residuals = TRUE)
 saveRDS(m_exc, file = 'models/m-exc-without-T_169.rds')
 
+# plot predicted vs observed
 ggplot(d, aes(fitted(m_exc), excursivity)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 1, color = 'darkorange') +

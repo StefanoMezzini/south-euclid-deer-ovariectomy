@@ -12,7 +12,7 @@ models <- expand_grid(parameter = c('hr', 'diff', 'exc'),
                         factor(levels = c('With T_169', 'Without T_169'))) %>%
   mutate(file_name = paste0('models/m-', parameter,
                             if_else(with_T_169 == 'With T_169',
-                                    '-with-T_169.rds',
+                                    '.rds',
                                     '-without-T_169.rds')),
          model = map(file_name, readRDS))
 
@@ -47,6 +47,7 @@ intercepts <-
                            'Excursivity')),
     group = if_else(group == 'Ovariectomy', 'Treatment' , group))
 
+#' warning `factor levels new not in original fit` is ok
 unique(last_dplyr_warnings())
 
 p_intercepts <-
@@ -81,23 +82,17 @@ plot_partials <- function(param) {
   doy_breaks <- c(1, 101, 201, 301)
   doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%b %d')
   
-  # if(param != 'exc') {
-  #   g_inv <- function(eta) pmax(exp(eta), .Machine$double.eps)
-  # } else {
-  #   g_inv <- function(eta) .Call(C_logit_linkinv, eta)
-  # }
-  
   partials %>%
     filter(parameter == param, term != 'Intercept') %>%
     filter(! (group == 'Control' & grepl('T_', animal_year) |
                 group == 'Ovariectomy' & grepl('C_', animal_year))) %>%
-    mutate(#across(c(lwr, mu, upr), g_inv),
+    mutate(
       g = case_when(is.na(animal_year) ~ 'pop',
                      grepl('T_169', animal_year) ~ 'T_169',
                      ! is.na(animal_year) ~ 're'),
       group = if_else(group == 'Ovariectomy', 'Treatment', 'Control')) %>%
     ggplot(aes(doy, mu)) +
-    facet_grid(term + group ~ with_T_169, scales = 'fixed') +
+    facet_grid(term + group ~ with_T_169, scales = 'free_y') +
     geom_hline(yintercept = 0, color = 'grey') +
     geom_ribbon(aes(ymin = lwr, ymax = upr, group = animal_year,
                     fill = g), alpha = 0.1, show.legend = FALSE) +
