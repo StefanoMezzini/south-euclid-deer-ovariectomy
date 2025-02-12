@@ -6,9 +6,9 @@ library('gratia')    #' for `inv_link()`
 source('analysis/figures/default-ggplot-theme.R')
 
 # import models ----
-m_hr <- readRDS('models/m-hr-with-T_169.rds')
-m_diff <- readRDS('models/m-diff-with-T_169.rds')
-m_exc <- readRDS('models/m-exc-with-T_169.rds')
+m_hr <- readRDS('models/m-hr.rds')
+m_diff <- readRDS('models/m-diff.rds')
+m_exc <- readRDS('models/m-exc.rds')
 
 doy_breaks <- c(1, 91, 182, 274)
 doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%B 1')
@@ -49,7 +49,7 @@ bind_rows(get_preds(parameter = 'hr'),
                     metric == 'diff' ~ 'Daily diffusion rate (km\U00B2/day)',
                     metric == 'exc' ~ 'Daily excursivity')) %>%
   ggplot(aes(doy)) +
-  facet_grid(lab ~ group, scales = 'free', switch = 'y') +
+  facet_grid(lab ~ ., scales = 'free', switch = 'y') +
   geom_ribbon(aes(ymin = lwr_95, ymax = upr_95, fill = group), alpha = 0.2) +
   geom_ribbon(aes(ymin = lwr_50, ymax = upr_50, fill = group), alpha = 0.2) +
   geom_line(aes(y = mu, color = group), linewidth = 1.5) +
@@ -57,9 +57,9 @@ bind_rows(get_preds(parameter = 'hr'),
                      expand = c(0, 0)) +
   ylab(NULL) +
   scale_fill_manual(values = PAL, aesthetics = c('color', 'fill')) +
-  theme(legend.position = 'none', strip.placement.y = 'outside',
+  theme(legend.position = 'top', strip.placement.y = 'outside',
         strip.background.y = element_blank(),
         strip.text.y = element_text(size = 11))
 
 ggsave('figures/graphical-abstract-gam-figure.png',
-       width = 8, height = 8, dpi = 600, bg = 'white')
+       width = 6, height = 8, dpi = 600, bg = 'white')
