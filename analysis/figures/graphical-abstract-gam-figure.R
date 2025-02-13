@@ -56,7 +56,7 @@ bind_rows(get_preds(parameter = 'hr'),
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab(NULL) +
-  scale_fill_manual(values = PAL, aesthetics = c('color', 'fill')) +
+  scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'top', strip.placement.y = 'outside',
         strip.background.y = element_blank(),
         strip.text.y = element_text(size = 11))
