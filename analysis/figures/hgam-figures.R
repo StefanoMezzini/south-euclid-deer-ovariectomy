@@ -45,26 +45,8 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   mutate(animal_year = factor(paste(animal, year(date))))
 
 # import number of daily fixes
-fixes <- readRDS('data/cleaned-telemetry-data.rds') %>%
-  select(! tag_local_identifier) %>%
-  unnest(tel) %>%
-  filter(outlier == 0) %>%
-  select(group, animal, timestamp) %>%
-  mutate(date = as.Date(timestamp)) %>%
-  group_by(group, animal, date) %>%
-  summarize(daily_fixes = n(), .groups = 'drop') %>%
-  nest(tel = ! c(group, animal)) %>%
-  mutate(tel = map(tel, \(.t) {
-    full_t <- tibble(date = seq(min(.t$date), max(.t$date), by = 1))
-    
-    left_join(full_t, .t, by = 'date') %>%
-      mutate(daily_fixes = if_else(is.na(daily_fixes), 0, daily_fixes))
-  })) %>%
-  unnest(tel) %>%
-  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group) %>%
-           factor(),
-         doy = yday(date),
-         animal_year = factor(paste(animal, year(date))))
+fixes <- readRDS('data/daily-fixes.rds') %>%
+  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
 
 #' figure of `n_fixes` with period in which the library station was down
 #' **DOES NOT ACCOUNT FOR INDIVIDUALS**
