@@ -37,21 +37,6 @@ mw <- map_dfr(list.files('models/moving-windows',
 
 unique(last_dplyr_warnings())[[1]]
 
-mw %>%
-  mutate(hr_est_95 = if_else(animal == 'T_169', NA_real_, hr_est_95),
-         diffusion_km2_day = if_else(animal == 'T_169', NA_real_,
-                                     diffusion_km2_day)) %>%
-  group_by(group) %>%
-  summarize(
-    hr = sum(! is.na(hr_est_95)),
-    diff = sum(! is.na(diffusion_km2_day)),
-    n = n(),
-    .groups = 'drop') %>%
-  bind_rows(.,
-            bind_cols(group = 'Total', t(colSums(select(., -1))))) %>%
-  mutate(hr = paste0(round(hr / n * 100, 1), '%'),
-         diff = paste0(round(diff / n * 100, 1), '%'))
-
 # daily excursivity data ----
 d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   mutate(tel = map2(tel, ud, \(.t, .u) {
