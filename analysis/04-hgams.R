@@ -299,3 +299,11 @@ ggplot(d, aes(fitted(m_exc), excursivity)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 1, color = 'darkorange') +
   geom_smooth(method = 'gam', formula = y ~ s(x, k = 20))
+
+# check dev.expl and scale parameters
+tibble(parameter = c('hr', 'diffusion', 'excursivity'),
+       model = list(readRDS('models/m-hr.rds'),
+                    readRDS('models/m-diff.rds'),
+                    readRDS('models/m-exc.rds')),
+       dev_expl = purrr::map_dbl(model, \(.m) summary(.m)$dev.expl) * 100,
+       scale_est = purrr::map_dbl(model, \(.m) summary(.m)$scale))
