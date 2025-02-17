@@ -37,6 +37,11 @@ mw <- map_dfr(list.files('models/moving-windows',
 
 unique(last_dplyr_warnings())[[1]]
 
+# get stats for range crossing times
+median(mw$tau_p_hours, na.rm = T)
+mean(mw$tau_p_hours, na.rm = T)
+sd(mw$tau_p_hours, na.rm = T)
+
 # find percentage and n of windows with HR and diffusion estimates
 mw %>%
   group_by(group) %>%
