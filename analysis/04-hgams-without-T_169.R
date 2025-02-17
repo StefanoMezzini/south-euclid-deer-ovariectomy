@@ -73,41 +73,6 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   ungroup() %>%
   mutate(animal_year = factor(paste(animal, lubridate::year(date))))
 
-# figure comparing parameters of T_169 to others ----
-plot_grid(
-  mw %>%
-    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
-    ggplot(aes(posixct, hr_est_95, color = animal != 'T_169')) +
-    facet_wrap(~ group) +
-    geom_line(aes(group = animal)) +
-    geom_point() +
-    labs(x = NULL, y = expression(bold('Home-range'~size~(km^2)))) +
-    scale_color_manual(NULL, values = c('red3', '#00000016'),
-                       labels = c('Deer T_169', 'Other deer')) +
-    theme(legend.position = 'inside',
-          legend.position.inside = c(0.92, 0.8)),
-  mw %>%
-    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
-    ggplot(aes(posixct, diffusion_km2_day, color = animal != 'T_169')) +
-    facet_wrap(~ group) +
-    geom_line(aes(group = animal)) +
-    geom_point() +
-    labs(x = NULL, y = expression(bold(Diffusion~(km^2/day)))) +
-    scale_color_manual(values = c('red3', '#00000016')) +
-    theme(legend.position = 'none'),
-  d %>%
-    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
-    ggplot(aes(date, excursivity, group = animal,
-                color = animal != 'T_169')) +
-    facet_wrap(~ group) +
-    geom_point() +
-    geom_line() +
-    labs(x = NULL, y = 'Excursivity') +
-    scale_color_manual(values = c('red3', '#00000016')) +
-    theme(legend.position = 'none'),
-  ncol = 1, labels = 'auto')
-ggsave('figures/deer-T_169-comparison.png', width = 10, height = 8)
-
 # make figures of full UDs ----
 mm <- readRDS('models/full-telemetry-movement-models.rds')
 T_169 <- which(mm$animal == 'T_169')
