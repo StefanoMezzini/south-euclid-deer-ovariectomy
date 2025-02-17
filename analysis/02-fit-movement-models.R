@@ -11,6 +11,18 @@ source('analysis/figures/default-ggplot-theme.R')
 
 d <- readRDS('data/cleaned-telemetry-data.rds')
 
+# number of locations
+nrow(d)
+
+# median sampling interval
+medians <- d %>%
+  unnest(tel) %>%
+  group_by(animal) %>%
+  summarise(dt = median(diff(timestamp))) %>%
+  pull(dt)
+median(medians)
+range(medians)
+
 # set up computational plan for increased efficiency
 NCORES <- availableCores(logical = FALSE) - 2
 plan(multisession, workers = NCORES)
@@ -71,6 +83,13 @@ models <- map_dfr(list.files('models/moving-windows',
                              full.names = TRUE), readRDS) %>%
   mutate(group = tolower(group))
 
+# find proportion of windows with tau_p < 1 day
+mean(models$tau_p_hours < 24, na.rm = TRUE)
+sum(models$tau_p_hours > 24 * 3, na.rm = TRUE)
+max(models$tau_p_hours, na.rm = TRUE) / 24
+max(filter(models, animal != 'T_169')$tau_p_hours, na.rm = TRUE) / 24
+
+# find counts and proportions of windows with tau_p and tau_v
 models %>%
   group_by(group) %>%
   summarize(has_hr = sum(! is.na(hr_est_95)),
@@ -173,7 +192,12 @@ mw %>%
   unique()
 
 # create dotplot of moving windows
-ggplot(mw) +
+d_ref <- mutate(d_ref, animal_id = factor(animal_id))
+
+mw %>%
+  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', 'Control'),
+         animal = as.character(animal)) %>%
+  ggplot() +
   geom_hline(aes(yintercept = animal_id), d_ref, color = 'grey') +
   geom_point(aes(date, animal, color = group), pch = 20) +
   geom_point(aes(deploy_on_date, animal_id, shape = 'start'), d_ref,
