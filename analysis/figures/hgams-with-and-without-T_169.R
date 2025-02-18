@@ -28,10 +28,10 @@ intercepts <-
            animal_year = 'new') %>%
       bind_cols(.,
                 predict.bam(.m, newdata = ., type = 'link', se.fit = TRUE,
-                            terms = c('group'),
+                            terms = c('group', '(Intercept)'),
                             discrete = FALSE) %>%
                   as.data.frame()) %>%
-      mutate(fit = fit + coef(.m)['(Intercept)'],
+      mutate(fit = fit,
              lwr = ilink(fit - 1.96 * se.fit),
              mu = ilink(fit),
              upr = ilink(fit + 1.96 * se.fit))
