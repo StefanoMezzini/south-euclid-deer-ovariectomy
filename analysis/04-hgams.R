@@ -41,19 +41,71 @@ unique(last_dplyr_warnings())[[1]]
 median(mw$tau_p_hours, na.rm = T)
 mean(mw$tau_p_hours, na.rm = T)
 sd(mw$tau_p_hours, na.rm = T)
+mean(mw$tau_p_hours < 24, na.rm = TRUE)
+sum(mw$tau_p_hours > 24 * 3, na.rm = TRUE)
 
+# proportions across groups
+mw %>%
+  filter(map_lgl(guess, \(.g) class(.g) != 'character')) %>%
+  summarize(iid = map_chr(model, \(.m) {
+    if(class(.m) == 'ctmm') {
+      summary(.m)$name
+    } else {
+      'Insufficient data.'
+    }
+  }) %>%
+    grepl('IID', .) %>%
+    mean(),
+  has_hr = mean(! is.na(hr_est_95)),
+  has_tau_p = mean(! is.na(tau_p_hours)),
+  has_tau_v = mean(! is.na(tau_v_hours)),
+  has_diffusion = mean(! is.na(diffusion_km2_day)),
+  total = n())
+
+# table S2
 # find percentage and n of windows with HR and diffusion estimates
 mw %>%
   group_by(group) %>%
   summarize(
-    hr = sum(! is.na(hr_est_95)),
-    diff = sum(! is.na(diffusion_km2_day)),
+    hr = sum(! is.na(hr_est_95) & hr_est_95 < 10),
+    diff = sum(! is.na(diffusion_km2_day) & diffusion_km2_day < 2),
+    exc = sum(map_int(dataset, \(.tel) nrow(.tel)) > 0),
     n = n(),
     .groups = 'drop') %>%
   bind_rows(.,
             bind_cols(group = 'Total', t(colSums(select(., -1))))) %>%
-  mutate(hr = paste0(round(hr / n * 100, 1), '%'),
-         diff = paste0(round(diff / n * 100, 1), '%'))
+  mutate(p_hr = paste0(round(hr / n * 100, 1), '%'),
+         p_diff = paste0(round(diff / n * 100, 1), '%'),
+         p_exc = paste0(round(exc / n * 100, 1), '%'))
+
+# find widows with at least 3 edf for HR and diffusion ----
+mw <- mutate(mw,
+             hr_edf = map_dbl(model, \(.m) {
+               if(class(.m) == 'ctmm') {
+                 return(summary(.m)$DOF['area'])
+               } else {
+                 return(NA_real_)
+               }
+             }),
+             diff_edf = map_dbl(model, \(.m) {
+               if(class(.m) == 'ctmm') {
+                 return(summary(.m)$DOF['diffusion'])
+               } else {
+                 return(NA_real_)
+               }
+             }))
+
+# hr
+range(mw$hr_edf, na.rm = TRUE)
+mean(mw$hr_edf > 3, na.rm = TRUE)
+sum(mw$hr_edf > 3, na.rm = TRUE)
+sum(! is.na(mw$hr_edf))
+
+# diffusion
+range(mw$diff_edf, na.rm = TRUE)
+mean(mw$diff_edf > 3, na.rm = TRUE)
+sum(mw$diff_edf > 3, na.rm = TRUE)
+sum(! is.na(mw$diff_edf))
 
 # daily excursivity data ----
 d <- readRDS('models/full-telemetry-movement-models.rds') %>%
@@ -75,14 +127,6 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   summarize(excursivity = mean(excursivity)) %>%
   ungroup() %>%
   mutate(animal_year = factor(paste(animal, lubridate::year(date))))
-
-# find percentage and n of windows with excursivity estimates
-d %>%
-  group_by(group) %>%
-  summarize(used = sum(! is.na(excursivity)), n = n(), .groups = 'drop') %>%
-  bind_rows(.,
-            bind_cols(group = 'Total', t(colSums(select(., -1))))) %>%
-  mutate(used = paste0(round(used / n * 100, 1), '%'))
 
 ggplot(d, aes(doy, excursivity, group = animal_year)) +
   facet_wrap(~ group, ncol = 1) +
