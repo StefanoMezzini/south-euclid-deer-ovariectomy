@@ -90,14 +90,32 @@ max(models$tau_p_hours, na.rm = TRUE) / 24
 max(filter(models, animal != 'T_169')$tau_p_hours, na.rm = TRUE) / 24
 
 # find counts and proportions of windows with tau_p and tau_v
-models %>%
+totals <- models %>%
   group_by(group) %>%
-  summarize(has_hr = sum(! is.na(hr_est_95)),
+  summarize(insuff_data = sum(map_lgl(guess, \(.g) class(.g) == 'character')),
+            iid = map_chr(model, \(.m) {
+              if(class(.m) == 'ctmm') {
+                summary(.m)$name
+              } else {
+                'Insufficient data.'
+              }
+              }) %>%
+              grepl('IID', .) %>%
+              sum(),
+            has_hr = sum(! is.na(hr_est_95)),
             has_tau_p = sum(! is.na(tau_p_hours)),
             has_tau_v = sum(! is.na(tau_v_hours)),
             has_diffusion = sum(! is.na(diffusion_km2_day)),
-            total = n())
+            total = n()) %>%
+  bind_rows(.,
+            bind_cols(group = 'Total', t(colSums(select(., -1)))))
+totals
 
+# find proportions
+totals %>%
+  mutate(across(insuff_data:total, \(.col) .col / total))
+
+# figures of tau_p, tau_v, and diffusion
 plot_grid(
   ggplot(models, aes(tau_p_hours)) +
     facet_grid(. ~ group) +
@@ -124,30 +142,6 @@ plot_grid(
     theme(legend.position = 'inside', legend.position.inside = c(0.8, 0.7)),
   ncol = 1)
 
-plot_grid(
-  ggplot(models, aes(posixct, hr_est_95)) +
-    facet_grid(. ~ group) +
-    geom_point(alpha = 0.3) +
-    geom_smooth(aes(group = animal), color = 'black', method = 'gam',
-                formula = y ~ s(x, k = 5),
-                method.args = list(family = Gamma(link = 'log'))) +
-    labs(x = NULL, y = expression(bold('7-day'~range~size~(km^2)))),
-  ggplot(models, aes(posixct, tau_p_hours)) +
-    facet_grid(. ~ group) +
-    geom_point(alpha = 0.3) +
-    geom_smooth(aes(group = animal), color = 'black', method = 'gam',
-                formula = y ~ s(x, k = 5),
-                method.args = list(family = Gamma(link = 'log'))) +
-    labs(x = NULL, y = 'Range crossin time (hours)'),
-  ggplot(models, aes(posixct, diffusion_km2_day)) +
-    facet_grid(. ~ group) +
-    geom_point(alpha = 0.3) +
-    geom_smooth(aes(group = animal), color = 'black', method = 'gam',
-                formula = y ~ s(x, k = 5),
-                method.args = list(family = Gamma(link = 'log'))) +
-    labs(x = NULL, y = expression(bold(Diffusion~(km^2/day)))),
-  ncol = 1)
-
 models <- filter(models, ! map_lgl(akde, is.null))
 
 uds <- lapply(models$akde, SpatialPolygonsDataFrame.UD) %>%
@@ -166,10 +160,10 @@ plot_grid(ggplot(uds) +
             scale_color_manual('Group', values = paste0(PAL, '10')) +
             theme(legend.position = 'none'),
           ggplot(uds) +
+            facet_wrap(~ group) +
             geom_sf(aes(color = large), fill = 'transparent', lwd = 1) +
-            scale_color_manual(expression(bold(HR~'>'~10~km^2)),
+            scale_color_manual(expression(bold(HR~'> 10 km'^'2')),
                                values = c('black', 'red2')))
-Sys.time()
 
 # check missing windows ----
 mw <- map_dfr(list.files('models/moving-windows',
@@ -195,8 +189,7 @@ mw %>%
 d_ref <- mutate(d_ref, animal_id = factor(animal_id))
 
 mw %>%
-  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', 'Control'),
-         animal = as.character(animal)) %>%
+  mutate(animal = as.character(animal)) %>%
   ggplot() +
   geom_hline(aes(yintercept = animal_id), d_ref, color = 'grey') +
   geom_point(aes(date, animal, color = group), pch = 20) +
