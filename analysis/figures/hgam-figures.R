@@ -71,6 +71,23 @@ m_diff <- readRDS('models/m-diff.rds')
 m_exc <- readRDS('models/m-exc.rds')
 m_fix <- readRDS('models/daily-fixes-hgam.rds')
 
+# get averages for each group ----
+expand_grid(group = unique(m_hr$model$group),
+            doy = seq(1, 365), # for post-stratification
+            doy_cr = 1, # excluded from predictions
+            animal_year = m_hr$model$animal_year[1]) %>% # excluded
+  mutate(.,
+         hr = predict(m_hr, newdata = ., type = 'response', se.fit = FALSE,
+                      terms = c('(Intercept)', 'group', 's(doy)')),
+         diff = predict(m_diff, newdata = ., type = 'response', se.fit = FALSE,
+                        terms = c('(Intercept)', 'group', 's(doy)')),
+         exc = predict(m_exc, newdata = ., type = 'response', se.fit = FALSE,
+                       terms = c('(Intercept)', 'group', 's(doy)')),
+         fixes = predict(m_fix, newdata = ., type = 'response', se.fit = FALSE,
+                         terms = c('(Intercept)', 'group', 's(doy)'))) %>%
+  group_by(group) %>%
+  summarise(across(c(hr, diff, exc, fixes), mean))
+
 # make predictions ----
 newd <- expand_grid(group = unique(m_hr$model$group),
                     doy = seq(1, 365, length.out = 400),
