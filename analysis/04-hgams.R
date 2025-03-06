@@ -178,7 +178,7 @@ plot_grid(
     labs(x = NULL, y = expression(bold('Home-range'~size~(km^2)))) +
     scale_color_manual(NULL, values = c('#00008B80', '#CD000080', '#00000016')) +
     theme(legend.position = 'inside',
-          legend.position.inside = c(0.9, 0.8)),
+          legend.position.inside = c(0.92, 0.75)),
   mw %>%
     mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group),
            col = case_when(animal == 'T_158' ~ 'Deer T_158',
