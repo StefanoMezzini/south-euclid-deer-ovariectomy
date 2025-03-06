@@ -58,64 +58,6 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   ungroup() %>%
   mutate(animal_year = factor(paste(animal, lubridate::year(date))))
 
-# make figures of full UDs ----
-mm <- readRDS('models/full-telemetry-movement-models.rds')
-T_169 <- which(mm$animal == 'T_169')
-
-uds <- imap_dfr(mm$animal, \(.a, .i) {
-  SpatialPolygonsDataFrame.UD(mm$ud[[.i]]) %>%                              
-    st_as_sf() %>%
-    st_transform(crs = 'EPSG:4326') %>%
-    as_tibble() %>%
-    slice(n():1) %>%
-    mutate(animal = .a)
-}) %>%
-  mutate(est = grepl('est', name))
-
-ud_169 <- filter(uds, animal == 'T_169')
-
-tel_169 <- SpatialPointsDataFrame.telemetry(mm$tel[[T_169]]) %>%
-  st_as_sf() %>%
-  st_transform('EPSG:4326') %>%
-  st_coordinates() %>%
-  as_tibble()
-
-# basemap
-if(file.exists('data/south-euclid-basemap.rds')) {
-  bm <- readRDS('data/south-euclid-basemap.rds')
-} else {
-  bm <- bind_rows(stations, tels) %>%
-    st_bbox() %>%
-    st_as_sfc() %>%
-    st_as_sf() %>%
-    st_buffer(1e3) %>%
-    st_bbox() %>%
-    `names<-`(c('left', 'bottom', 'right', 'top')) %>%
-    get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
-  saveRDS(bm, 'data/south-euclid-basemap.rds')
-}
-
-plot_grid(
-  ggmap(bm) +
-    geom_sf(aes(geometry = geometry, lwd = est), ud_169,
-            fill = '#00000017', show.legend = FALSE, inherit.aes = FALSE) +
-    geom_point(aes(X, Y), tel_169, size = 0.5, inherit.aes = FALSE) +
-    geom_path(aes(X, Y), tel_169, alpha = 0.2, inherit.aes = FALSE) +
-    labs(x = NULL, y = NULL) +
-    scale_linewidth_manual(values = c(0.25, 0.75)),
-  ggmap(bm) +
-    geom_sf(aes(geometry = geometry, lwd = est, color = animal != 'T_169'),
-            uds, fill = '#00000017', show.legend = FALSE,
-            inherit.aes = FALSE) +
-    labs(x = NULL, y = NULL) +
-    scale_linewidth_manual(values = c(0.25, 0.75)) +
-    scale_color_manual(NULL, values = c('red3', 'black'),
-                       labels = c('Deer T_169', 'Other deer')),
-  labels = 'auto')
-
-ggsave('figures/deer-T_169-comparison-ud.png', width = 10, height = 8,
-       bg = 'white')
-
 # drop T_169 ----
 mw <- filter(mw, animal != 'T_169')
 d <- filter(d, animal != 'T_169')

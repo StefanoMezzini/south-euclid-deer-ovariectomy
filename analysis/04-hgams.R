@@ -166,36 +166,43 @@ ggplot(mw, aes(posixct, speed_m_s, group = animal)) +
 # will drop HRs > 12 km^2
 plot_grid(
   mw %>%
-    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
-    ggplot(aes(posixct, hr_est_95, color = animal != 'T_169')) +
+    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group),
+           col = case_when(animal == 'T_158' ~ 'Deer T_158',
+                           animal == 'T_169' ~ 'Deer T_169',
+                           TRUE ~ 'Other deer')) %>%
+    ggplot(aes(posixct, hr_est_95, color = col)) +
     facet_wrap(~ group) +
     geom_hline(yintercept = 10, linetype = 'dashed') +
     geom_line(aes(group = animal)) +
     geom_point() +
     labs(x = NULL, y = expression(bold('Home-range'~size~(km^2)))) +
-    scale_color_manual(NULL, values = c('#CD000080', '#00000016'),
-                       labels = c('Deer T_169', 'Other deer')) +
+    scale_color_manual(NULL, values = c('#00008B80', '#CD000080', '#00000016')) +
     theme(legend.position = 'inside',
           legend.position.inside = c(0.92, 0.8)),
   mw %>%
-    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
-    ggplot(aes(posixct, diffusion_km2_day, color = animal != 'T_169')) +
+    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group),
+           col = case_when(animal == 'T_158' ~ 'Deer T_158',
+                           animal == 'T_169' ~ 'Deer T_169',
+                           TRUE ~ 'Other deer')) %>%
+    ggplot(aes(posixct, diffusion_km2_day, color = col)) +
     facet_wrap(~ group) +
     geom_hline(yintercept = 2, linetype = 'dashed') +
     geom_line(aes(group = animal)) +
     geom_point() +
     labs(x = NULL, y = expression(bold(Diffusion~(km^2/day)))) +
-    scale_color_manual(values = c('#CD000080', '#00000016')) +
+    scale_color_manual(NULL, values = c('#00008B80', '#CD000080', '#00000016')) +
     theme(legend.position = 'none'),
   d %>%
-    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group)) %>%
-    ggplot(aes(date, excursivity, group = animal,
-               color = animal != 'T_169')) +
+    mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group),
+           col = case_when(animal == 'T_158' ~ 'Deer T_158',
+                           animal == 'T_169' ~ 'Deer T_169',
+                           TRUE ~ 'Other deer')) %>%
+    ggplot(aes(date, excursivity, group = animal, color = col)) +
     facet_wrap(~ group) +
     geom_point() +
     geom_line() +
     labs(x = NULL, y = 'Excursivity') +
-    scale_color_manual(values = c('#CD000080', '#00000016')) +
+    scale_color_manual(NULL, values = c('#00008B80', '#CD000080', '#00000016')) +
     theme(legend.position = 'none'),
   ncol = 1, labels = 'auto')
 ggsave('figures/deer-T_169-comparison.png', width = 10, height = 8)
