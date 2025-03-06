@@ -78,6 +78,15 @@ mw %>%
          p_diff = paste0(round(diff / n * 100, 1), '%'),
          p_exc = paste0(round(exc / n * 100, 1), '%'))
 
+# percentage of windows with <= 5 locations (so no movement model)
+mw %>%
+  group_by(group) %>%
+  mutate(n_obs = map(dataset, nrow)) %>%
+  summarise(n_5 = sum(n_obs <= 5), # should be == n(character) below
+            no_guess = sum(map_lgl(guess, \(.g) class(.g) == 'character')),
+            total = n()) %>%
+  mutate(perc = n_5 / total * 100)
+
 # find widows with at least 3 edf for HR and diffusion ----
 mw <- mutate(mw,
              hr_edf = map_dbl(model, \(.m) {
