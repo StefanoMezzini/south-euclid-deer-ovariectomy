@@ -267,10 +267,26 @@ ggsave('figures/deer-T_169-comparison-ud.png', width = 10, height = 8,
 
 # find n and percentages of data dropped ----
 # hr
+mw %>%
+  filter(! is.na(hr_est_95)) %>%
+  group_by(group) %>%
+  summarize(mean = mean(hr_est_95),
+            mean_wo_large = mean(hr_est_95[hr_est_95 < 10]),
+            rel = min(hr_est_95[hr_est_95 > 10]) / mean(hr_est_95),
+            rel_wo_large = min(hr_est_95[hr_est_95 > 10]) / mean(hr_est_95[hr_est_95 < 10]))
 sum(mw$hr_est_95 > 10, na.rm = TRUE)
 paste0(round(mean(mw$hr_est_95 > 10, na.rm = TRUE) * 100, 2), '%')
 
 # diffusion
+mw %>%
+  filter(! is.na(diffusion_km2_day)) %>%
+  group_by(group) %>%
+  summarize(mean = mean(diffusion_km2_day),
+            mean_wo_large = mean(diffusion_km2_day[diffusion_km2_day < 2]),
+            rel = min(diffusion_km2_day[diffusion_km2_day > 2]) /
+              mean(diffusion_km2_day),
+            rel_wo_large = min(diffusion_km2_day[diffusion_km2_day > 2]) /
+              mean(diffusion_km2_day[diffusion_km2_day < 2]))
 sum(mw$diffusion_km2_day > 2, na.rm = TRUE)
 paste0(round(mean(mw$diffusion_km2_day > 2, na.rm = TRUE) * 100, 2), '%')
 
