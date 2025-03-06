@@ -178,7 +178,7 @@ plot_grid(
     labs(x = NULL, y = expression(bold('Home-range'~size~(km^2)))) +
     scale_color_manual(NULL, values = c('#00008B80', '#CD000080', '#00000016')) +
     theme(legend.position = 'inside',
-          legend.position.inside = c(0.92, 0.8)),
+          legend.position.inside = c(0.9, 0.8)),
   mw %>%
     mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group),
            col = case_when(animal == 'T_158' ~ 'Deer T_158',
@@ -205,7 +205,7 @@ plot_grid(
     scale_color_manual(NULL, values = c('#00008B80', '#CD000080', '#00000016')) +
     theme(legend.position = 'none'),
   ncol = 1, labels = 'auto')
-ggsave('figures/deer-T_169-comparison.png', width = 10, height = 8)
+ggsave('figures/deer-comparisons.png', width = 10, height = 8)
 
 # make figures of full UDs ----
 mm <- readRDS('models/full-telemetry-movement-models.rds')
