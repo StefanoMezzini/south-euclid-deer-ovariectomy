@@ -62,16 +62,18 @@ if(file.exists('data/south-euclid-basemap.rds')) {
 
 p_a <-
   ggmap(se_map) +
-  geom_sf(inherit.aes = FALSE, data = se, color = 'darkred', lwd = 1,
-          fill = 'transparent') +
   geom_path(aes(X, Y, group = animal), bind_cols(tels, st_coordinates(tels)),
             inherit.aes = FALSE, alpha = 0.5, linewidth = 0.1) +
-  geom_sf(data = tels, inherit.aes = FALSE, alpha = 0.5, size = 0.2) +
+  geom_sf(data = tels, inherit.aes = FALSE, alpha = 0.1, size = 0.2) +
+  geom_sf(inherit.aes = FALSE, data = se, color = 'darkred', lwd = 0.5,
+          fill = 'transparent') +
   geom_sf(data = green_rd, inherit.aes = FALSE, color = 'darkorange',
           linewidth = 1) +
   geom_sf(data = stations, inherit.aes = FALSE, size = 3.5) +
   geom_sf(data = stations, inherit.aes = FALSE, size = 1.75, color = 'white') +
-  labs(x = 'Longitude', y = 'Latitude')
+  labs(x = 'Longitude', y = 'Latitude') +
+  scale_x_continuous(breaks = seq(-81.56, -81.48, by = 0.02),
+                     expand = c(0, 0))
 
 se_center <- st_as_sf(st_centroid(se))
 
@@ -90,11 +92,11 @@ p_c <- ggplot() +
   theme_map()
 
 plot_grid(p_a,
-          plot_grid(p_b, p_c, labels = c('b', 'c'), nrow = 1),
-          labels = c('a', ''), ncol = 1, rel_heights = c(6, 1))
+          plot_grid(p_b, p_c, labels = c('b', 'c'), nrow = 2),
+          labels = c('a', ''), ncol = 2, rel_heights = c(6, 1))
 
-ggsave('figures/south-euclid-map.png',
-       width = 7, height = 14 * (7/6), units = 'in', dpi = 600, bg = 'white')
+ggsave('figures/south-euclid-map.png', scale = 2,
+       width = WIDTH, height = WIDTH, units = 'in', dpi = 600, bg = 'white')
 
 # find mean number of locations inside and outside of South Euclid ----
 # without grouping by animal

@@ -6,3 +6,6 @@ theme_set(theme_bw() +
 
 # PAL <- c(control = '#CC3311', ovariectomy = '#009988')
 PAL <- c(Control = '#74A6DA', Treatment = '#EF6756')
+
+WIDTH <- 7.5 / 2.54
+WIDTH_EXTRA <- 11 / 2.54

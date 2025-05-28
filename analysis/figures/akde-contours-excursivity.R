@@ -42,22 +42,25 @@ bm <- tel %>%
   get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 15)
 
 ggmap(bm) +
-  coord_equal() +
+  coord_sf(crs = 'EPSG:4326') +
   geom_segment(aes(x = x_start, xend = x_end, y = y_start, yend = y_end,
-                   group = factor(timestamp)), tel, size = 0.1, alpha = 0.5) +
+                   group = factor(timestamp)), tel, linewidth = 0.1,
+               alpha = 0.5) +
   geom_point(aes(x = x_start, y = y_start), tel, size = 0.1, alpha = 0.5) +
   geom_raster(aes(x, y, fill = layer), a, na.rm = TRUE) +
   geom_contour(aes(x, y, z = layer), a, color = 'white',
                breaks = seq(0, 1, by = 0.1), linewidth = 0.1,
                na.rm = TRUE, inherit.aes = FALSE) +
   scale_x_continuous('Longitude', expand = c(0.02, 0),
-                     limits = range(tel$x_start)) +
+                     limits = range(tel$x_start),
+                     breaks = seq(-81.54, -81.5, by = 0.01)) +
   scale_y_continuous('Latitude', expand = c(0.02, 0),
-                     limits = range(tel$y_start)) +
+                     limits = range(tel$y_start),
+                     breaks = seq(41.52, 41.56, by = 0.01)) +
   scale_fill_gradient('AKDE quantile', low = 'darkorange3',
                       high = '#cd660002', limits = c(0, 1),
                       aesthetics = c('color', 'fill')) +
   theme(legend.position = 'top')
 
-ggsave('figures/ud-density-example.png', width = 5, height = 5,
-       units = 'in', dpi = 600, bg = 'white')
+ggsave('figures/ud-density-example.png', width = WIDTH, height = 4,
+       scale = 2, units = 'in', dpi = 600, bg = 'white')

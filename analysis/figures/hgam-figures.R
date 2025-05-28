@@ -126,12 +126,12 @@ p_hr <-
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   # dropping one extreme HR estimates
   geom_point(aes(doy, hr_est_95), filter(mw, hr_est_95 < 10),
-             alpha = 0.2, na.rm = TRUE) +
+             alpha = 0.1, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
-              alpha = 0.2) +
-  geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
+              alpha = 0.4) +
+  geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('7-day home-range size (km\U00B2)') +
@@ -147,12 +147,12 @@ p_diff <-
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   # dropping one extreme estimate from the plot for readability
   geom_point(aes(doy, diffusion_km2_day),
-             filter(mw, diffusion_km2_day < 2), alpha = 0.2, na.rm = TRUE) +
+             filter(mw, diffusion_km2_day < 2), alpha = 0.1, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
-              alpha = 0.2) +
-  geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
+              alpha = 0.4) +
+  geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('Daily diffusion rate (km\U00B2/day)') +
@@ -164,12 +164,12 @@ p_exc <-
   facet_grid(. ~ group) +
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
-  geom_point(aes(doy, excursivity), d, alpha = 0.2) +
+  geom_point(aes(doy, excursivity), d, alpha = 0.1) +
   geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
   geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
-              alpha = 0.2) +
-  geom_line(aes(doy, exc_mu, color = group), linewidth = 1.5) +
+              alpha = 0.4) +
+  geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   scale_y_continuous('Daily excursivity', limits = c(0, 1), expand = c(0, 0)) +
@@ -178,8 +178,8 @@ p_exc <-
 
 plot_grid(p_hr, p_diff, p_exc, labels = 'auto', ncol = 1)
 
-ggsave('figures/hgam-figure-with-data.png', width = 16, height = 12,
-       units = 'in', dpi = 600, bg = 'white')
+ggsave('figures/hgam-figure-with-data.png', width = WIDTH_EXTRA,
+       height = WIDTH_EXTRA, units = 'in', dpi = 600, bg = 'white', scale = 2)
 
 # daily fixes
 p_fix <-
@@ -211,7 +211,7 @@ p_hr <-
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
               alpha = 0.2) +
-  geom_line(aes(doy, hr_mu, color = group), linewidth = 1.5) +
+  geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('7-day home-range size (km\U00B2)') +
@@ -226,7 +226,7 @@ p_diff <-
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
               alpha = 0.2) +
-  geom_line(aes(doy, diff_mu, color = group), linewidth = 1.5) +
+  geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('Daily diffusion rate (km\U00B2/day)') +
@@ -241,7 +241,7 @@ p_exc <-
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
               alpha = 0.2) +
-  geom_line(aes(doy, exc_mu, color = group), linewidth = 1.5) +
+  geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   scale_y_continuous('Daily excursivity') +
@@ -253,8 +253,8 @@ leg <- get_legend(p_hr)
 plot_grid(leg, p_hr, p_diff, p_exc, labels = c('', 'a', 'b', 'c'),
           ncol = 1, rel_heights = c(0.1, 1, 1, 1))
 
-ggsave('figures/hgam-figure.png', width = 8, height = 12, units = 'in',
-       dpi = 600, bg = 'white')
+ggsave('figures/hgam-figure.png', width = WIDTH, height = WIDTH * 1.5,
+       scale = 2, units = 'in', dpi = 600, bg = 'white')
 
 # daily fixes
 p_fix <-
@@ -265,12 +265,12 @@ p_fix <-
               alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
               alpha = 0.2) +
-  geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
+  geom_line(aes(doy, fix_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
   ylab('Number of fixes per deer in a day') +
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'top')
 
-ggsave('figures/daily-fixes-figure.png', p_fix,
-       width = 8, height = 6, units = 'in', dpi = 600, bg = 'white')
+ggsave('figures/daily-fixes-figure.png', p_fix, scale = 2,
+       width = WIDTH, height = 2, units = 'in', dpi = 600, bg = 'white')
