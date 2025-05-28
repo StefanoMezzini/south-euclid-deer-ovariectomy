@@ -192,6 +192,7 @@ offline <- tibble(xmin = as.Date('2023-03-15'), xmax = as.Date('2023-07-01'),
                   ymin = -Inf, ymax = Inf)
 
 mw %>%
+  filter(! is.na(hr_est_95)) %>%
   mutate(animal = as.character(animal)) %>%
   ggplot() +
   geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
