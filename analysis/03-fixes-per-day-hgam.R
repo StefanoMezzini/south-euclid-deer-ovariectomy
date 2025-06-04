@@ -45,6 +45,11 @@ if(file.exists('data/daily-fixes.rds')) {
   saveRDS(d, 'data/daily-fixes.rds')
 }
 
+# add a dummy variable for estimating difference in seasonal trends ----
+#' using a numeric dummy variable in the `by` argument of `s()` gives a
+#' smooth that accounts for the difference between groups
+d <- mutate(d, difference = if_else(group == 'Control', 0, 1))
+
 # number of fixes per day are somewhat consistent between groups, other
 # than one individual in the control group that has no fixes for a long
 # period of time
@@ -64,10 +69,10 @@ if(file.exists('models/daily-fixes-hgam.rds')) {
 } else {
   m <- bam(
     daily_fixes ~
-      group + #' `by` requires an explicit intercept for each group
-      s(doy, by = group, bs = 'cc', k = 5) +
-      s(doy_cr, by = group, animal_year, bs = 'fs', xt = list(bs = 'cr'),
-        k = 5),
+      s(doy, k = 10, bs = 'cc') +
+      s(doy, by = difference, k = 10, bs = 'cc') +
+      s(doy_cr, by = group, animal_year, k = 10, bs = 'fs',
+        xt = list(bs = 'cr')),
     family = tw(link = 'log'),
     data = d,
     method = 'fREML',
@@ -77,7 +82,7 @@ if(file.exists('models/daily-fixes-hgam.rds')) {
 }
 
 appraise(m, point_alpha = 0.1)
-draw(m, rug = FALSE, parametric = TRUE)
+draw(m, rug = FALSE)
 summary(m)
 
 d %>%

@@ -230,19 +230,7 @@ tel_169 <- SpatialPointsDataFrame.telemetry(mm$tel[[T_169]]) %>%
   as_tibble()
 
 # basemap
-if(file.exists('data/south-euclid-basemap.rds')) {
-  bm <- readRDS('data/south-euclid-basemap.rds')
-} else {
-  bm <- bind_rows(stations, tels) %>%
-    st_bbox() %>%
-    st_as_sfc() %>%
-    st_as_sf() %>%
-    st_buffer(1e3) %>%
-    st_bbox() %>%
-    `names<-`(c('left', 'bottom', 'right', 'top')) %>%
-    get_stadiamap(maptype = 'stamen_terrain', bbox = ., zoom = 14)
-  saveRDS(bm, 'data/south-euclid-basemap.rds')
-}
+bm <- readRDS('data/south-euclid-basemap.rds')
 
 plot_grid(
   ggmap(bm) +
@@ -316,11 +304,17 @@ mw %>%
 ggsave('figures/values-dropped-telemetries.png', width = 8, height = 5,
        scale = 2, bg = 'white')
 
+# add a dummy variable for estimating difference in seasonal trends ----
+#' using a numeric dummy variable in the `by` argument of `s()` gives a
+#' smooth that accounts for the difference between groups
+mw <- mutate(mw, difference = if_else(group == 'Control', 0, 1))
+d <- mutate(d, difference = if_else(group == 'Control', 0, 1))
+
 # home range size ----
 m_hr <- bam(
   hr_est_95 ~
-    group + #' `by` requires an explicit intercept for each group
-    s(doy, by = group, k = 10, bs = 'cc') +
+    s(doy, k = 10, bs = 'cc') +
+    s(doy, by = difference, k = 10, bs = 'cc') +
     s(doy_cr, by = group, animal_year, k = 10, bs = 'fs',
       xt = list(bs = 'cr')),
   family = Gamma('log'),
@@ -331,32 +325,34 @@ m_hr <- bam(
   knots = list(doy = c(0.5, 365.5)))
 
 appraise(m_hr, point_alpha = 0.1)
-draw(m_hr, nrow = 3, parametric = TRUE, residuals = TRUE)
+draw(m_hr, residuals = TRUE)
+summary(m_hr)
 saveRDS(m_hr, file = 'models/m-hr.rds')
 
 # diffusion ----
 m_diff <- bam(
   diffusion_km2_day ~
-    group + #' `by` requires an explicit intercept for each group
-    s(doy, by = group, k = 10, bs = 'cc') +
+    s(doy, k = 10, bs = 'cc') +
+    s(doy, by = difference, k = 10, bs = 'cc') +
     s(doy_cr, by = group, animal_year, k = 10, bs = 'fs',
       xt = list(bs = 'cr')),
   family = Gamma('log'),
   data = mw,
-  subset = hr_est_95 < 2, # drop outlier diffusion estimate
+  subset = diffusion_km2_day < 2, # drop outlier diffusion estimate
   method = 'fREML',
   discrete = TRUE,
   knots = list(doy = c(0.5, 365.5)))
 
 appraise(m_diff, point_alpha = 0.1)
-draw(m_diff, nrow = 3, parametric = TRUE, residuals = TRUE)
+draw(m_diff, residuals = TRUE)
+summary(m_diff)
 saveRDS(m_diff, file = 'models/m-diff.rds')
 
 # excursivity (fits in ~ 160 seconds) ----
 m_exc <- bam(
   excursivity ~
-    group + #' `by` requires an explicit intercept for each group
-    s(doy, by = group, k = 10, bs = 'cc') +
+    s(doy, k = 10, bs = 'cc') +
+    s(doy, by = difference, k = 10, bs = 'cc') +
     s(doy_cr, by = group, animal_year, k = 10, bs = 'fs',
       xt = list(bs = 'cr')),
   family = betar(link = 'logit'),
@@ -367,8 +363,9 @@ m_exc <- bam(
   control = gam.control(trace = TRUE))
 
 appraise(m_exc, type = 'pearson', point_alpha = 0.1)
-draw(m_exc, parametric = TRUE, residuals = TRUE)
-saveRDS(m_exc, file = 'models/m-exc-without-T_169.rds')
+draw(m_exc, residuals = TRUE)
+summary(m_exc)
+saveRDS(m_exc, file = 'models/m-exc.rds')
 
 # plot predicted vs observed
 ggplot(d, aes(fitted(m_exc), excursivity)) +

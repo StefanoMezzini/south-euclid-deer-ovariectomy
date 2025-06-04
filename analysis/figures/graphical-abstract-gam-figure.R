@@ -17,15 +17,15 @@ doy_labs <- format(as.Date('2022-12-31') + doy_breaks, '%B 1')
 newd <- expand_grid(group = unique(m_hr$model$group),
                     doy = seq(1, 365, length.out = 400),
                     doy_cr = 0,
-                    animal_year = 'new animal')
+                    animal_year = 'new animal') %>%
+  mutate(difference = if_else(group == 'Control', 0, 1))
 
 #' unlike `functions/get_preds.R`, adds the data a column of parameter
 get_preds <- function(parameter) {
   m <- get(paste0('m_', parameter))
   
   predict(m, newdata = newd, type = 'link', se.fit = TRUE,
-          exclude = c('s(doy_cr,animal_year):groupControl',
-                      's(doy_cr,animal_year):groupOvariectomy'),
+          exclude = smooths(m)[grepl('animal_year', smooths(m))],
           # Smoothness uncertainty corrected covariance not available
           discrete = FALSE, unconditional = FALSE) %>%
     as.data.frame() %>%
@@ -50,8 +50,8 @@ bind_rows(get_preds(parameter = 'hr'),
                     metric == 'exc' ~ 'Daily excursivity')) %>%
   ggplot(aes(doy)) +
   facet_grid(lab ~ ., scales = 'free', switch = 'y') +
-  geom_ribbon(aes(ymin = lwr_95, ymax = upr_95, fill = group), alpha = 0.2) +
-  geom_ribbon(aes(ymin = lwr_50, ymax = upr_50, fill = group), alpha = 0.2) +
+  geom_ribbon(aes(ymin = lwr_95, ymax = upr_95, fill = group), alpha = 0.3) +
+  # geom_ribbon(aes(ymin = lwr_50, ymax = upr_50, fill = group), alpha = 0.2) +
   geom_line(aes(y = mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +

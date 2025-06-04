@@ -21,7 +21,8 @@ mw <- map_dfr(list.files('models/moving-windows',
          group = if_else(group == 'Ovariectomy', 'Treatment', group) %>%
            factor(),
          animal_year = paste(animal, year(date)) %>%
-           factor())
+           factor(),
+         difference = if_else(group == 'Control', 0, 1))
 
 # daily excursivity data ----
 d <- readRDS('models/full-telemetry-movement-models.rds') %>%
@@ -42,11 +43,14 @@ d <- readRDS('models/full-telemetry-movement-models.rds') %>%
   group_by(group, animal, doy, date) %>%
   summarize(excursivity = mean(excursivity)) %>%
   ungroup() %>%
-  mutate(animal_year = factor(paste(animal, year(date))))
+  mutate(animal_year = factor(paste(animal, year(date))),
+         difference = if_else(group == 'Control', 0, 1))
 
 # import number of daily fixes
 fixes <- readRDS('data/daily-fixes.rds') %>%
-  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
+  mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group),
+         difference = if_else(group == 'Control', 0, 1))
+
 
 #' figure of `n_fixes` with period in which the library station was down
 #' **DOES NOT ACCOUNT FOR INDIVIDUALS**
@@ -71,28 +75,20 @@ m_diff <- readRDS('models/m-diff.rds')
 m_exc <- readRDS('models/m-exc.rds')
 m_fix <- readRDS('models/daily-fixes-hgam.rds')
 
-# get averages for each group ----
-expand_grid(group = unique(m_hr$model$group),
-            doy = seq(1, 365), # for post-stratification
-            doy_cr = 1, # excluded from predictions
-            animal_year = m_hr$model$animal_year[1]) %>% # excluded
-  mutate(.,
-         hr = predict(m_hr, newdata = ., type = 'response', se.fit = FALSE,
-                      terms = c('(Intercept)', 'group', 's(doy)')),
-         diff = predict(m_diff, newdata = ., type = 'response', se.fit = FALSE,
-                        terms = c('(Intercept)', 'group', 's(doy)')),
-         exc = predict(m_exc, newdata = ., type = 'response', se.fit = FALSE,
-                       terms = c('(Intercept)', 'group', 's(doy)')),
-         fixes = predict(m_fix, newdata = ., type = 'response', se.fit = FALSE,
-                         terms = c('(Intercept)', 'group', 's(doy)'))) %>%
-  group_by(group) %>%
-  summarise(across(c(hr, diff, exc, fixes), mean))
+# estimate mean differences (intercepts) ----
+preds %>%
+  select(doy, group, hr_mu, diff_mu, exc_mu, fix_mu) %>%
+  pivot_longer(c(hr_mu, diff_mu, exc_mu, fix_mu), names_to = 'parameter',
+               values_to = 'value') %>%
+  pivot_wider(names_from = group, values_from = value) %>%
+  summarize(mean_diff = mean(Treatment - Control), .by = parameter)
 
 # make predictions ----
 newd <- expand_grid(group = unique(m_hr$model$group),
                     doy = seq(1, 365, length.out = 400),
                     doy_cr = 0,
-                    animal_year = 'new animal')
+                    animal_year = 'new animal') %>%
+  mutate(difference = if_else(group == 'Control', 0, 1))
 
 preds <- bind_cols(newd,
                    get_preds(parameter = 'hr'),
@@ -100,12 +96,6 @@ preds <- bind_cols(newd,
                    get_preds(parameter = 'exc'),
                    get_preds(parameter = 'fix')) %>%
   mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
-
-# get estimates and CIs for the intercept values ----
-get_cis(m_fix)
-get_cis(m_hr)
-get_cis(m_diff)
-get_cis(m_exc)
 
 # make figures ----
 doy_breaks <- c(1, 91, 182, 274)
@@ -129,8 +119,8 @@ p_hr <-
              alpha = 0.1, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
               alpha = 0.3) +
-  geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
-              alpha = 0.4) +
+  # geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
+  #             alpha = 0.4) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -150,8 +140,8 @@ p_diff <-
              filter(mw, diffusion_km2_day < 2), alpha = 0.1, na.rm = TRUE) +
   geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
               alpha = 0.3) +
-  geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
-              alpha = 0.4) +
+  # geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
+  #             alpha = 0.4) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -167,8 +157,8 @@ p_exc <-
   geom_point(aes(doy, excursivity), d, alpha = 0.1) +
   geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
               alpha = 0.3) +
-  geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
-              alpha = 0.4) +
+  # geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
+  #             alpha = 0.4) +
   geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -190,8 +180,8 @@ p_fix <-
   geom_point(aes(doy, daily_fixes), fixes, alpha = 0.2) +
   geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
               alpha = 0.2) +
-  geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
-              alpha = 0.2) +
+  # geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
+  #             alpha = 0.2) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -208,9 +198,9 @@ p_hr <-
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
-              alpha = 0.2) +
-  geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
+  # geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
+  #             alpha = 0.2) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -223,9 +213,9 @@ p_diff <-
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
-              alpha = 0.2) +
-  geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
+  # geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
+  #             alpha = 0.2) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -238,9 +228,9 @@ p_exc <-
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
-              alpha = 0.2) +
-  geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
+  # geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
+  #             alpha = 0.2) +
   geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -259,16 +249,17 @@ ggsave('figures/hgam-figure.png', width = WIDTH, height = WIDTH * 1.5,
 # daily fixes
 p_fix <-
   ggplot(preds) +
+  coord_cartesian(ylim = c(0, 15)) +
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
-              alpha = 0.2) +
-  geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
-              alpha = 0.2) +
+              alpha = 0.3) +
+  # geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
+  #             alpha = 0.2) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
-  ylab('Number of fixes per deer in a day') +
+  ylab('Fixes per deer in a day') +
   scale_fill_manual('Group', values = PAL, aesthetics = c('color', 'fill')) +
   theme(legend.position = 'top')
 
