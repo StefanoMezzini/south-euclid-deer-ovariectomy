@@ -73,7 +73,12 @@ p_a <-
   geom_sf(data = stations, inherit.aes = FALSE, size = 1.75, color = 'white') +
   labs(x = 'Longitude', y = 'Latitude') +
   scale_x_continuous(breaks = seq(-81.56, -81.48, by = 0.02),
-                     expand = c(0, 0))
+                     expand = c(0, 0)) +
+  geom_rect(aes(xmin = -81.56, xmax = -81.524,
+                ymin = 41.446, ymax = 41.4524),
+            fill = 'white', color = 'black', linewidth = 0.5) +
+  ggspatial::annotation_scale(style = 'ticks', text_cex = 0.9,
+                              line_width = 1)
 
 se_center <- st_as_sf(st_centroid(se))
 
@@ -91,11 +96,12 @@ p_c <- ggplot() +
   geom_sf(data = ohio, fill = 'darkorange') +
   theme_map()
 
-plot_grid(p_a,
-          plot_grid(p_b, p_c, labels = c('b', 'c'), nrow = 2),
-          labels = c('a', ''), ncol = 2, rel_heights = c(6, 1))
+p_map <-
+  plot_grid(p_a,
+            plot_grid(p_b, p_c, labels = c('b', 'c'), nrow = 2),
+            labels = c('a', ''), ncol = 2, rel_heights = c(6, 1))
 
-ggsave('figures/south-euclid-map.png', scale = 2,
+ggsave('figures/south-euclid-map.png', p_map, scale = 2,
        width = WIDTH, height = WIDTH, units = 'in', dpi = 600, bg = 'white')
 
 # find mean number of locations inside and outside of South Euclid ----
