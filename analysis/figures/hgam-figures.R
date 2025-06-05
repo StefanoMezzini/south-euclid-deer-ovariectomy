@@ -75,14 +75,6 @@ m_diff <- readRDS('models/m-diff.rds')
 m_exc <- readRDS('models/m-exc.rds')
 m_fix <- readRDS('models/daily-fixes-hgam.rds')
 
-# estimate mean differences (intercepts) ----
-preds %>%
-  select(doy, group, hr_mu, diff_mu, exc_mu, fix_mu) %>%
-  pivot_longer(c(hr_mu, diff_mu, exc_mu, fix_mu), names_to = 'parameter',
-               values_to = 'value') %>%
-  pivot_wider(names_from = group, values_from = value) %>%
-  summarize(mean_diff = mean(Treatment - Control), .by = parameter)
-
 # make predictions ----
 newd <- expand_grid(group = unique(m_hr$model$group),
                     doy = seq(1, 365, length.out = 400),
@@ -96,6 +88,14 @@ preds <- bind_cols(newd,
                    get_preds(parameter = 'exc'),
                    get_preds(parameter = 'fix')) %>%
   mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
+
+# estimate mean differences (intercepts) ----
+preds %>%
+  select(doy, group, hr_mu, diff_mu, exc_mu, fix_mu) %>%
+  pivot_longer(c(hr_mu, diff_mu, exc_mu, fix_mu), names_to = 'parameter',
+               values_to = 'value') %>%
+  pivot_wider(names_from = group, values_from = value) %>%
+  summarize(mean_diff = mean(Treatment - Control), .by = parameter)
 
 # make figures ----
 doy_breaks <- c(1, 91, 182, 274)
