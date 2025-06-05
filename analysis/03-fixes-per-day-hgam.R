@@ -13,6 +13,7 @@ if(file.exists('data/daily-fixes.rds')) {
   d <- readRDS('data/daily-fixes.rds')
 } else {
   d <- readRDS('data/cleaned-telemetry-data.rds') %>%
+    ungroup() %>%
     select(! tag_local_identifier) %>%
     # add deployment dates
     full_join(
@@ -23,6 +24,7 @@ if(file.exists('data/daily-fixes.rds')) {
       by = join_by(animal == animal_id)) %>%
     relocate(deploy_on_date, .after = group) %>%
     unnest(tel) %>%
+    # not removing outlier locations since we are only counting the total
     select(group, animal, deploy_on_date, timestamp) %>%
     mutate(date = as.Date(timestamp)) %>%
     # calculate daily fixes per animal
@@ -34,10 +36,13 @@ if(file.exists('data/daily-fixes.rds')) {
       # all days from deploy date to last date with a window
       full_t <- tibble(date = seq(as.Date('2023-01-27'), as.Date('2024-05-27'), by = 1))
       
+      # set daily fixes to zero if no fixes occurred
       left_join(full_t, .t, by = 'date') %>%
         mutate(daily_fixes = if_else(is.na(daily_fixes), 0, daily_fixes))
     })) %>%
+    # drop dates before deploy
     unnest(tel) %>%
+    filter(date >= deploy_on_date) %>%
     mutate(group = factor(group),
            doy = lubridate::yday(date),
            doy_cr = doy,
