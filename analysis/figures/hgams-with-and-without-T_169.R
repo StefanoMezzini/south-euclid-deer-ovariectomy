@@ -86,6 +86,12 @@ plot_partials <- function(param) {
     param == 'diff' ~ 'Estimated partial effect on diffusion (link scale)',
     param == 'exc' ~ 'Estimated partial effect on excursivity (link scale)')
   
+  d_ylim <- tibble(x = 1,
+                   y = c(min(filter(partials, parameter == param)$lwr),
+                         max(filter(partials, parameter == param)$upr)),
+                   term = factor('Individual-level deviations',
+                                 levels = levels(partials$term))) 
+  
   partials %>%
     filter(parameter == param) %>% # filter to specific movement parameter
     # drop animals from the other group
@@ -102,6 +108,9 @@ plot_partials <- function(param) {
                         is.na(by) ~ 'Control')) %>%
     ggplot(aes(doy, mu)) +
     facet_grid(term + group ~ with_T_169, scales = 'free_y') +
+    # add common axes for the fs smooths
+    geom_point(aes(x, y), d_ylim, color = 'transparent') +
+    # add estimated lines and CIs
     geom_hline(yintercept = 0, color = 'grey') +
     geom_ribbon(aes(ymin = lwr, ymax = upr, group = animal_year,
                     fill = g), alpha = 0.1, show.legend = FALSE) +
@@ -123,11 +132,12 @@ plot_partials <- function(param) {
 # averages for the control and the treatment with 95% CIs for the
 # difference. Panels B-D show the estimated smooth partial effects for each
 # model on the link scale. Doe T_169 is indicated in red.
-p_effects <- plot_grid(p_differences,
-                       plot_partials(param = 'hr'),
-                       plot_partials(param = 'diff'),
-                       plot_partials(param = 'exc'),
-                       labels = 'auto')
+p_effects <- plot_grid(
+  p_differences,
+  plot_partials(param = 'hr'),
+  plot_partials(param = 'diff'),
+  plot_partials(param = 'exc'),
+  labels = 'auto')
 
 ggsave('figures/partial-effects.png', p_effects, width = 16, height = 16,
        units = 'in', dpi = 600, bg = 'white')
