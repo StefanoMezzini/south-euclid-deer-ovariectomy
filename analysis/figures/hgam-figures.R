@@ -83,10 +83,10 @@ newd <- expand_grid(group = unique(m_hr$model$group),
   mutate(difference = if_else(group == 'Control', 0, 1))
 
 preds <- bind_cols(newd,
-                   get_preds(parameter = 'hr'),
-                   get_preds(parameter = 'diff'),
-                   get_preds(parameter = 'exc'),
-                   get_preds(parameter = 'fix')) %>%
+                   get_preds(parameter = 'hr', alpha = 0.05),
+                   get_preds(parameter = 'diff', alpha = 0.05),
+                   get_preds(parameter = 'exc', alpha = 0.05),
+                   get_preds(parameter = 'fix', alpha = 0.05)) %>%
   mutate(group = if_else(group == 'Ovariectomy', 'Treatment', group))
 
 # estimate mean differences (intercepts) ----
@@ -117,10 +117,8 @@ p_hr <-
   # dropping one extreme HR estimates
   geom_point(aes(doy, hr_est_95), filter(mw, hr_est_95 < 10),
              alpha = 0.1, na.rm = TRUE) +
-  geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
               alpha = 0.3) +
-  # geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
-  #             alpha = 0.4) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -138,10 +136,8 @@ p_diff <-
   # dropping one extreme estimate from the plot for readability
   geom_point(aes(doy, diffusion_km2_day),
              filter(mw, diffusion_km2_day < 2), alpha = 0.1, na.rm = TRUE) +
-  geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
               alpha = 0.3) +
-  # geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
-  #             alpha = 0.4) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -155,10 +151,8 @@ p_exc <-
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, excursivity), d, alpha = 0.1) +
-  geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
               alpha = 0.3) +
-  # geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
-  #             alpha = 0.4) +
   geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -178,10 +172,8 @@ p_fix <-
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
   geom_point(aes(doy, daily_fixes), fixes, alpha = 0.2) +
-  geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
               alpha = 0.2) +
-  # geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
-  #             alpha = 0.2) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1.5) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -197,10 +189,8 @@ p_hr <-
   ggplot(preds) +
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = hr_lwr_95, ymax = hr_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = hr_lwr, ymax = hr_upr, fill = group),
               alpha = 0.3) +
-  # geom_ribbon(aes(doy, ymin = hr_lwr_50, ymax = hr_upr_50, fill = group),
-  #             alpha = 0.2) +
   geom_line(aes(doy, hr_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -212,10 +202,8 @@ p_diff <-
   ggplot(preds) +
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = diff_lwr_95, ymax = diff_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = diff_lwr, ymax = diff_upr, fill = group),
               alpha = 0.3) +
-  # geom_ribbon(aes(doy, ymin = diff_lwr_50, ymax = diff_upr_50, fill = group),
-  #             alpha = 0.2) +
   geom_line(aes(doy, diff_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -227,10 +215,8 @@ p_exc <-
   ggplot(preds) +
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = exc_lwr_95, ymax = exc_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = exc_lwr, ymax = exc_upr, fill = group),
               alpha = 0.3) +
-  # geom_ribbon(aes(doy, ymin = exc_lwr_50, ymax = exc_upr_50, fill = group),
-  #             alpha = 0.2) +
   geom_line(aes(doy, exc_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +
@@ -252,10 +238,8 @@ p_fix <-
   coord_cartesian(ylim = c(0, 15)) +
   geom_vline(xintercept = yday('2023-05-30'), color = 'grey') +
   geom_vline(xintercept = yday('2023-11-10'), color = 'grey') +
-  geom_ribbon(aes(doy, ymin = fix_lwr_95, ymax = fix_upr_95, fill = group),
+  geom_ribbon(aes(doy, ymin = fix_lwr, ymax = fix_upr, fill = group),
               alpha = 0.3) +
-  # geom_ribbon(aes(doy, ymin = fix_lwr_50, ymax = fix_upr_50, fill = group),
-  #             alpha = 0.2) +
   geom_line(aes(doy, fix_mu, color = group), linewidth = 1) +
   scale_x_continuous(NULL, breaks = doy_breaks, labels = doy_labs,
                      expand = c(0, 0)) +

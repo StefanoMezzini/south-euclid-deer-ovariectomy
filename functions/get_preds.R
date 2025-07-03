@@ -1,4 +1,4 @@
-get_preds <- function(parameter) {
+get_preds <- function(parameter, alpha) {
   m <- get(paste0('m_', parameter))
   
   pr <- predict(
@@ -9,10 +9,8 @@ get_preds <- function(parameter) {
     discrete = FALSE, unconditional = FALSE) %>%
     as.data.frame() %>%
     transmute(mu = inv_link(m)(fit),
-              lwr_50 = inv_link(m)(fit - se.fit * 0.67),
-              upr_50 = inv_link(m)(fit + se.fit * 0.67),
-              lwr_95 = inv_link(m)(fit - se.fit * 1.96),
-              upr_95 = inv_link(m)(fit + se.fit * 1.96))
+              lwr = inv_link(m)(fit - se.fit * qnorm(1 - alpha / 2)),
+              upr = inv_link(m)(fit + se.fit * qnorm(1 - alpha / 2)))
   
   colnames(pr) <- paste0(parameter, '_', colnames(pr))
   
