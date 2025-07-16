@@ -211,6 +211,9 @@ mw %>%
                      values = c('[', ']', '\U00d7')) +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
   labs(x = NULL, y = 'Animal ID') +
+  scale_x_continuous(breaks = c('2023-01-01', '2023-03-15', '2023-07-01',
+                                '2023-10-01', '2024-01-01', '2024-04-01') %>%
+                       as.Date()) +
   theme(legend.position = 'top')
 
 ggsave('figures/moving-window-dotplot.png', width = 10, height = 8,
