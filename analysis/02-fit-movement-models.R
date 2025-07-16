@@ -186,21 +186,22 @@ mw %>%
   unique()
 
 # create dotplot of moving windows
-d_ref <- mutate(d_ref, animal_id = factor(animal_id))
+d_ref <- mutate(d_ref,
+                animal_id = factor(animal_id, levels = rev(sort(unique(animal_id)))))
 
 offline <- tibble(xmin = as.Date('2023-03-15'), xmax = as.Date('2023-07-01'),
                   ymin = -Inf, ymax = Inf)
 
 mw %>%
   filter(! is.na(hr_est_95)) %>%
-  mutate(animal = as.character(animal)) %>%
+  mutate(animal = factor(animal, levels = levels(d_ref$animal_id))) %>%
   ggplot() +
   geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
             offline, fill = 'grey90', color = 'grey50') +
   geom_hline(aes(yintercept = animal_id), d_ref, color = 'grey') +
-  geom_point(aes(date, animal, color = group), pch = 20) +
   geom_point(aes(deploy_on_date, animal_id, shape = 'start'), d_ref,
              size = 5) +
+  geom_point(aes(date, animal, color = group), mw, pch = 20) +
   geom_point(aes(deploy_off_date, animal_id, shape = 'end'), d_ref,
              size = 5, na.rm = TRUE) +
   geom_point(aes(animal_mortality_date, animal_id, shape = 'mortality'),
