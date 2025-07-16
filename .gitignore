@@ -51,3 +51,6 @@ rsconnect/
 
 # ignore SE basemap
 data/south-euclid-basemap.rds
+
+# ignore .db files
+*/*.db
