@@ -24,15 +24,15 @@ unique(d$geolocator_fix_type)
 unique(d$group)
 head(unique(d$comments)) # nearest addresses
 
-# collars were set to sample every ~30 minutes
+# collars were set to sample every 60 minutes, but some samples were more frequent
 d <- d %>%
   group_by(animal_id) %>%
-  mutate(dt = c(NA, diff(timestamp))) %>%
+  mutate(dt = timestamp - lag(timestamp)) %>%
   ungroup()
 
 median(d$dt, na.rm = TRUE)
 
-hist(d$dt, breaks = seq(0, 3e6, by = 30), xlim = c(0, 400))
+hist(as.numeric(d$dt), breaks = seq(0, 3e6, by = 30), xlim = c(0, 400))
 
 d %>%
   group_by(animal_id) %>%
@@ -40,12 +40,6 @@ d %>%
             mean_dt = mean(dt, na.rm = TRUE),
             median_dt = median(dt, na.rm = TRUE)) %>%
   arrange(median_dt)
-
-d %>%
-  group_by(animal_id) %>%
-  summarize(min_dt = min(diff(timestamp)),
-            mean_dt = mean(diff(timestamp)),
-            median_dt = median(diff(timestamp)))
 
 # reference data
 d_ref <- read_csv('data/Odocoileus virginianus DeNicola South Euclid-reference-data.csv',
@@ -98,15 +92,6 @@ ggplot() +
 table(d_ref$animal_comments)
 table(d_ref$animal_death_comments)
 table(d_ref$deployment_comments)
-
-# plot histograms of time to fix (not sure what the units are)
-d %>%
-  ggplot() +
-  facet_wrap(~ animal_id, scales = 'free_y', ncol = 4) +
-  geom_histogram(aes(gps_time_to_fix, fill = group), na.rm = TRUE, bins = 10) +
-  scale_fill_manual(NULL, values = PAL) +
-  labs(x = 'GPS time to fix (units?)', y = 'Count') +
-  theme(legend.position = 'inside', legend.position.inside = c(0.75, 0.09))
 
 # plot histograms of sampling intervals
 d %>%
