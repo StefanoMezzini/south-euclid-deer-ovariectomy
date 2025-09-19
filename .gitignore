@@ -54,3 +54,4 @@ data/south-euclid-basemap.rds
 
 # ignore .db files
 */*.db
+DeNicola-2025-south-euclid-deer.zip

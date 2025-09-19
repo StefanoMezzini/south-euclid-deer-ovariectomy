@@ -1,0 +1,22 @@
+tag-id,animal-id,animal-taxon,deploy-on-date,deploy-off-date,animal-comments,animal-death-comments,animal-mortality-date,animal-sex,deployment-comments,tag-manufacturer-name,tag-serial-no
+4DYTLY,T_166,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+79ZQ4W,T_169,Odocoileus virginianus,2023-01-24,2023-05-30,NA,"Dispelled fetus 3/20/23
+Mortality 5/30/23",2023-05-30,FALSE,NA,Sigfox,NA
+7TZW7R,T_152,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+7ZGREN,T_158,Odocoileus virginianus,2023-01-24,2024-02-29,NA,NA,2024-02-29,FALSE,NA,Sigfox,NA
+CGNJZL,C_100,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+D9NW2Y,C_161,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+DMH2D3,C_107,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+FN9JPY,C_102,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+HC32PM,T_163,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+HRXLRW,T_155,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+MWDDCX,T_151,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+VJUFE3,C_106,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+MCJZEK,T_153,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+1CRQN6,T_160,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+L2JMV4,T_159,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+LGFZWH,C_101,Odocoileus virginianus,2023-01-24,NA,NA,NA,NA,FALSE,NA,Sigfox,LGFZWH
+YZX346,C_103,Odocoileus virginianus,2023-01-24,2023-02-20,Lost collar - out of area,NA,2023-05-17,FALSE,Photo of doe without collar from 2/2023,Sigfox,NA
+99ZRY2,C_108,Odocoileus virginianus,2023-01-24,2023-10-26,NA,NA,2023-10-26,FALSE,NA,Sigfox,NA
+99ZRY2,C_200,Odocoileus virginianus,2024-01-18,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
+79ZQ4W,C_201,Odocoileus virginianus,2024-01-20,NA,NA,NA,NA,FALSE,NA,Sigfox,NA
